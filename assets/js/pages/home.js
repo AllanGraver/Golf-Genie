@@ -1,2 +1,117 @@
-import {PROFILE,PERFORMANCE} from "../../data/demo-data.js";import {card,metric} from "../components/ui.js";
-export function homePage(state){const r=state.rounds[0];return `<div class="page">${card(`<div class="row"><div><p class="eyebrow">DIN PROFIL</p><div class="kpi">HCP ${String(PROFILE.handicap).replace(".",",")}</div></div>${metric("Mål",PROFILE.target)}</div><h2 class="card-title">Hvor taber du slag?</h2><div class="metric-grid">${PERFORMANCE.map(x=>metric(x.name,`<span class="${x.value<0?"danger":"accent"}">${x.value>0?"+":""}${String(x.value).replace(".",",")}</span>`)).join("")}</div>`,true)}${card(`<p class="eyebrow">UGENS FOKUS</p><h2 class="card-title">Approach 100–165 m</h2><p class="text-muted">TrackMan viser din kapacitet. Garmin viser din baneperformance.</p><button class="button button--accent button--full" data-page="training">Start træning</button>`,true)}${card(`<div class="row"><div><p class="eyebrow">SENESTE RUNDE</p><h2 class="card-title">${r.course}</h2><p class="text-muted">${r.date}</p></div><div class="round-card__score">${r.score}<small style="display:block;font-size:11px">${r.points??"–"} point</small></div></div><div class="metric-grid metric-grid--3">${metric("FIR",`${r.fir??"–"}%`)}${metric("GIR",`${r.gir??"–"}%`)}${metric("Putts",r.putts??"–")}</div>`)}</div>`}
+import { PERFORMANCE } from "../../data/demo-data.js";
+import { card, metric } from "../components/ui.js";
+
+export function homePage(state) {
+
+  const r = state.rounds[0];
+
+  const profile = state.profile || {
+    handicap: 12.7,
+    targetHandicap: 10
+  };
+
+  return `
+    <div class="page">
+
+      ${card(`
+        <div class="row">
+
+          <div>
+            <p class="eyebrow">DIN PROFIL</p>
+
+            <div class="kpi">
+              HCP ${String(profile.handicap).replace(".", ",")}
+            </div>
+          </div>
+
+          ${metric(
+            "Mål",
+            String(profile.targetHandicap).replace(".", ",")
+          )}
+
+        </div>
+
+        <h2 class="card-title">
+          Hvor taber du slag?
+        </h2>
+
+        <div class="metric-grid">
+
+          ${PERFORMANCE.map(x =>
+            metric(
+              x.name,
+              `<span class="${x.value < 0 ? "danger" : "accent"}">
+                ${x.value > 0 ? "+" : ""}
+                ${String(x.value).replace(".", ",")}
+              </span>`
+            )
+          ).join("")}
+
+        </div>
+      `, true)}
+
+      ${card(`
+        <p class="eyebrow">
+          UGENS FOKUS
+        </p>
+
+        <h2 class="card-title">
+          Approach 100–165 m
+        </h2>
+
+        <p class="text-muted">
+          TrackMan viser din kapacitet.
+          Garmin viser din baneperformance.
+        </p>
+
+        <button
+          class="button button--accent button--full"
+          data-page="training">
+          Start træning
+        </button>
+      `, true)}
+
+      ${card(`
+        <div class="row">
+
+          <div>
+            <p class="eyebrow">
+              SENESTE RUNDE
+            </p>
+
+            <h2 class="card-title">
+              ${r.course}
+            </h2>
+
+            <p class="text-muted">
+              ${r.date}
+            </p>
+          </div>
+
+          <div class="round-card__score">
+            ${r.score}
+
+            <small
+              style="display:block;font-size:11px">
+
+              ${r.points ?? "–"} point
+
+            </small>
+          </div>
+
+        </div>
+
+        <div class="metric-grid metric-grid--3">
+
+          ${metric("FIR", `${r.fir ?? "–"}%`)}
+
+          ${metric("GIR", `${r.gir ?? "–"}%`)}
+
+          ${metric("Putts", r.putts ?? "–")}
+
+        </div>
+      `)}
+
+    </div>
+  `;
+}
