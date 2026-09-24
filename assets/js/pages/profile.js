@@ -1,119 +1,95 @@
-import {
-  getProfile,
-  saveProfile
-} from "../core/storage.js";
-
-export function profilePage() {
-
-  const profile = getProfile();
+export function profilePage(state) {
+  const profile = state.profile;
 
   return `
     <div class="page">
-
       <div class="card">
-
         <p class="eyebrow">PROFIL</p>
 
         <h2 class="card-title">
           Spillerprofil
         </h2>
 
-        <label>Handicap</label>
+        <label for="hcp">
+          Handicap
+        </label>
+
         <input
-          id="handicap"
+          id="hcp"
           type="number"
+          inputmode="decimal"
           step="0.1"
+          min="-10"
+          max="54"
           value="${profile.handicap}"
         >
 
-        <label>Målhandicap</label>
+        <label for="target">
+          Målhandicap
+        </label>
+
         <input
-          id="targetHandicap"
+          id="target"
           type="number"
+          inputmode="decimal"
           step="0.1"
+          min="-10"
+          max="54"
           value="${profile.targetHandicap}"
         >
 
-        <label>Hjemmebane</label>
+        <label for="course">
+          Hjemmebane
+        </label>
+
         <input
-          id="homeCourse"
+          id="course"
+          type="text"
           value="${profile.homeCourse}"
         >
 
-        <label>Spillehånd</label>
+        <label for="handedness">
+          Spillehånd
+        </label>
 
         <select id="handedness">
-
           <option
             value="Right"
-            ${profile.handedness==="Right"?"selected":""}
+            ${profile.handedness === "Right" ? "selected" : ""}
           >
             Højrehåndet
           </option>
 
           <option
             value="Left"
-            ${profile.handedness==="Left"?"selected":""}
+            ${profile.handedness === "Left" ? "selected" : ""}
           >
             Venstrehåndet
           </option>
-
         </select>
 
-        <label>Alder</label>
+        <label for="age">
+          Alder
+        </label>
 
         <input
           id="age"
           type="number"
+          inputmode="numeric"
+          step="1"
+          min="1"
+          max="120"
           value="${profile.age}"
         >
 
         <button
-          class="button button--accent button--full"
           id="save-profile"
+          class="button button--accent button--full"
+          type="button"
         >
           Gem profil
         </button>
-
       </div>
-
     </div>
   `;
-}
-
-export function initProfilePage() {
-
-  const button =
-    document.getElementById("save-profile");
-
-  if (!button) return;
-
-  button.addEventListener("click", () => {
-
-    saveProfile({
-
-      handicap: Number(
-        document.getElementById("handicap").value
-      ),
-
-      targetHandicap: Number(
-        document.getElementById("targetHandicap").value
-      ),
-
-      homeCourse:
-        document.getElementById("homeCourse").value,
-
-      handedness:
-        document.getElementById("handedness").value,
-
-      age: Number(
-        document.getElementById("age").value
-      )
-
-    });
-
-    alert("Profil gemt");
-
-  });
-
 }
