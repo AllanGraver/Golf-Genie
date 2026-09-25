@@ -34,8 +34,8 @@ export function profilePage(state) {
         </h2>
 
         <p class="text-muted">
-          Oplysningerne gemmes lokalt i browseren og bruges
-          til at tilpasse Golf Genie.
+          Oplysningerne gemmes lokalt i browseren
+          og bruges til at tilpasse Golf Genie.
         </p>
 
         <label for="hcp">
@@ -83,6 +83,7 @@ export function profilePage(state) {
         </label>
 
         <select id="handedness">
+
           <option
             value="Right"
             ${
@@ -104,6 +105,7 @@ export function profilePage(state) {
           >
             Venstrehåndet
           </option>
+
         </select>
 
         <label for="age">
@@ -131,8 +133,8 @@ export function profilePage(state) {
       </div>
 
       <div class="status status--info">
-        Profiloplysningerne gemmes kun lokalt på denne enhed.
-        Hvis browserens lokale data slettes, nulstilles profilen.
+        Profiloplysninger gemmes kun lokalt på denne enhed.
+        Hvis browserdata slettes, nulstilles profilen.
       </div>
 
     </div>
