@@ -511,3 +511,222 @@ label{
   }
 
 }
+
+/* ==========================================
+   ROUND EDITOR
+========================================== */
+
+.round-history{
+  margin-top:12px;
+  padding:16px;
+  border:1px solid var(--color-border);
+  border-radius:14px;
+  background:#fff;
+}
+
+.round-history--editing{
+  border:2px solid var(--color-primary-700);
+  background:#f8fffc;
+}
+
+.round-history__header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.round-history__score{
+  text-align:right;
+  font-size:24px;
+  font-weight:700;
+}
+
+.round-history__score small{
+  display:block;
+  font-size:12px;
+  color:var(--color-muted);
+}
+
+.round-history__metrics{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+
+.round-edit{
+  display:grid;
+  gap:18px;
+}
+
+.round-edit__section{
+  padding:16px;
+  border:1px solid var(--color-border);
+  border-radius:14px;
+}
+
+.round-edit__section legend{
+  padding:0 8px;
+  font-weight:700;
+}
+
+.round-edit__grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+
+.round-edit__field{
+  display:flex;
+  flex-direction:column;
+}
+
+.round-edit__field--wide{
+  grid-column:span 2;
+}
+
+.round-edit__field label{
+  margin-bottom:6px;
+  font-weight:600;
+}
+
+.round-edit__validation{
+  margin-top:10px;
+}
+
+.round-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:12px;
+}
+
+.button--danger{
+  background:#dc2626;
+  color:#fff;
+}
+
+.button--danger:hover{
+  background:#b91c1c;
+}
+
+/* ==========================================
+   HOLE GRID
+========================================== */
+
+.hole-grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:10px;
+}
+
+.hole-field{
+  display:flex;
+  flex-direction:column;
+}
+
+.hole-field label{
+  margin-bottom:4px;
+  font-size:12px;
+  font-weight:700;
+  text-align:center;
+}
+
+.hole-field input{
+  text-align:center;
+}
+
+/* ==========================================
+   COURSE SUMMARY
+========================================== */
+
+.course-summary{
+  display:grid;
+  gap:14px;
+}
+
+.course-summary__header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+}
+
+.round-card__score{
+  font-size:28px;
+  font-weight:700;
+  text-align:right;
+}
+
+.round-card__score small{
+  display:block;
+  font-size:12px;
+  color:var(--color-muted);
+}
+
+.round-history-list{
+  margin-top:16px;
+}
+
+.course-note-section{
+  margin-top:10px;
+}
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media(max-width:767px){
+
+  .round-history__metrics{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .round-edit__grid{
+    grid-template-columns:1fr;
+  }
+
+  .round-edit__field--wide{
+    grid-column:auto;
+  }
+
+  .hole-grid{
+    grid-template-columns:repeat(3,1fr);
+  }
+
+  .course-summary__header{
+    flex-direction:column;
+  }
+
+  .round-history__header{
+    flex-direction:column;
+  }
+
+  .round-history__score{
+    text-align:left;
+  }
+
+  .round-actions{
+    flex-direction:column;
+  }
+
+  .round-actions .button{
+    width:100%;
+  }
+}
+
+/* ==========================================
+   LARGE DESKTOP
+========================================== */
+
+@media(min-width:1200px){
+
+  .hole-grid{
+    grid-template-columns:repeat(9,1fr);
+  }
+
+  .round-edit__grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+}
