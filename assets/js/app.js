@@ -354,19 +354,43 @@ function bindCourseNotes() {
   });
 }
 
+function readIndexedNumbers(form, selector, datasetKey) {
+  return Array.from(form.querySelectorAll(selector))
+    .sort(
+      (a, b) =>
+        Number(a.dataset[datasetKey]) -
+        Number(b.dataset[datasetKey])
+    )
+    .map(optionalNumberFromElement);
+}
+
+function compactRoundArray(values) {
+  return values.some((value) => value !== null)
+    ? values
+    : [];
+}
+
 function parseRoundEditForm(form) {
   const value = (fieldName) =>
     form.querySelector(`[data-round-field="${fieldName}"]`);
 
-  const holes = Array.from(
-    form.querySelectorAll("[data-round-hole]")
-  )
-    .sort(
-      (a, b) => Number(a.dataset.roundHole) - Number(b.dataset.roundHole)
-    )
-    .map(optionalNumberFromElement);
+  const holes = readIndexedNumbers(
+    form,
+    "[data-round-hole]",
+    "roundHole"
+  );
 
-  const hasHoleValues = holes.some((hole) => hole !== null);
+  const holePars = readIndexedNumbers(
+    form,
+    "[data-round-hole-par]",
+    "roundHolePar"
+  );
+
+  const holeHandicapStrokes = readIndexedNumbers(
+    form,
+    "[data-round-hole-handicap]",
+    "roundHoleHandicap"
+  );
 
   return {
     course: value("course")?.value.trim() || "",
@@ -377,24 +401,18 @@ function parseRoundEditForm(form) {
     points: optionalNumberFromElement(value("points")),
     frontNine: optionalNumberFromElement(value("frontNine")),
     backNine: optionalNumberFromElement(value("backNine")),
-    fir: optionalNumberFromElement(value("fir")),
     firMade: optionalNumberFromElement(value("firMade")),
     firPossible: optionalNumberFromElement(value("firPossible")),
-    gir: optionalNumberFromElement(value("gir")),
     girMade: optionalNumberFromElement(value("girMade")),
     girPossible: optionalNumberFromElement(value("girPossible")),
     putts: optionalNumberFromElement(value("putts")),
-    upAndDown: optionalNumberFromElement(value("upAndDown")),
-    upAndDownMade: optionalNumberFromElement(value("upAndDownMade")),
-    upAndDownPossible: optionalNumberFromElement(value("upAndDownPossible")),
-    pars: optionalNumberFromElement(value("pars")),
-    bogeys: optionalNumberFromElement(value("bogeys")),
-    doubleBogeyPlus: optionalNumberFromElement(value("doubleBogeyPlus")),
-    holes: hasHoleValues ? holes : []
+    holes: compactRoundArray(holes),
+    holePars: compactRoundArray(holePars),
+    holeHandicapStrokes: compactRoundArray(holeHandicapStrokes)
   };
 }
 
-function calculatePercentage(made, possible, existingValue) {
+function calculatePercentage(made, possible, fallback = null) {
   if (
     Number.isFinite(made) &&
     Number.isFinite(possible) &&
@@ -403,7 +421,95 @@ function calculatePercentage(made, possible, existingValue) {
     return Number(((made / possible) * 100).toFixed(1));
   }
 
-  return existingValue;
+  return fallback;
+}
+
+function completeNumericArray(values, expectedLength = 18) {
+  return (
+    Array.isArray(values) &&
+    values.length === expectedLength &&
+    values.every(Number.isFinite)
+  );
+}
+
+function sumNumbers(values) {
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function calculateScoringCategories(holes, holePars) {
+  const result = {
+    eaglesOrBetter: 0,
+    birdies: 0,
+    pars: 0,
+    bogeys: 0,
+    doubleBogeyPlus: 0,
+    completedHoles: 0
+  };
+
+  for (let index = 0; index < 18; index += 1) {
+    const score = Number(holes?.[index]);
+    const par = Number(holePars?.[index]);
+
+    if (!Number.isFinite(score) || !Number.isFinite(par)) {
+      continue;
+    }
+
+    result.completedHoles += 1;
+    const difference = score - par;
+
+    if (difference <= -2) {
+      result.eaglesOrBetter += 1;
+    } else if (difference === -1) {
+      result.birdies += 1;
+    } else if (difference === 0) {
+      result.pars += 1;
+    } else if (difference === 1) {
+      result.bogeys += 1;
+    } else {
+      result.doubleBogeyPlus += 1;
+    }
+  }
+
+  return result;
+}
+
+function enrichRoundCalculations(round) {
+  const enriched = { ...round };
+
+  enriched.fir = calculatePercentage(
+    enriched.firMade,
+    enriched.firPossible,
+    enriched.fir ?? null
+  );
+
+  enriched.gir = calculatePercentage(
+    enriched.girMade,
+    enriched.girPossible,
+    enriched.gir ?? null
+  );
+
+  const completeScores = completeNumericArray(enriched.holes);
+  const completePars = completeNumericArray(enriched.holePars);
+
+  if (completeScores) {
+    enriched.frontNine = sumNumbers(enriched.holes.slice(0, 9));
+    enriched.backNine = sumNumbers(enriched.holes.slice(9, 18));
+    enriched.score = enriched.frontNine + enriched.backNine;
+  }
+
+  if (completeScores && completePars) {
+    const totalPar = sumNumbers(enriched.holePars);
+    enriched.relativeToPar = enriched.score - totalPar;
+
+    const scoring = calculateScoringCategories(
+      enriched.holes,
+      enriched.holePars
+    );
+
+    Object.assign(enriched, scoring);
+  }
+
+  return enriched;
 }
 
 function validateEditedRound(round) {
@@ -422,31 +528,42 @@ function validateEditedRound(round) {
     errors.push("Samlet score skal være mellem 1 og 250.");
   }
 
-  const percentageFields = [
-    ["FIR", round.fir],
-    ["GIR", round.gir],
-    ["Up & Down", round.upAndDown]
-  ];
+  if (
+    round.firMade !== null &&
+    round.firPossible !== null &&
+    round.firMade > round.firPossible
+  ) {
+    errors.push("Ramte fairways kan ikke overstige mulige fairways.");
+  }
 
-  percentageFields.forEach(([label, value]) => {
-    if (value !== null && (value < 0 || value > 100)) {
-      errors.push(`${label} skal være mellem 0 og 100 procent.`);
-    }
-  });
+  if (
+    round.girMade !== null &&
+    round.girPossible !== null &&
+    round.girMade > round.girPossible
+  ) {
+    errors.push("Ramte greens kan ikke overstige mulige greens.");
+  }
 
   if (round.putts !== null && (round.putts < 0 || round.putts > 100)) {
     errors.push("Putts skal være mellem 0 og 100.");
   }
 
-  [
-    ["Pars", round.pars],
-    ["Bogeys", round.bogeys],
-    ["Double eller værre", round.doubleBogeyPlus]
-  ].forEach(([label, value]) => {
-    if (value !== null && (value < 0 || value > 18)) {
-      errors.push(`${label} skal være mellem 0 og 18.`);
-    }
-  });
+  const completedScores = (round.holes || []).filter(Number.isFinite);
+  const completedPars = (round.holePars || []).filter(Number.isFinite);
+  const completedHandicap = (round.holeHandicapStrokes || [])
+    .filter(Number.isFinite);
+
+  if (completedScores.length > 0 && completedScores.length !== 18) {
+    warnings.push("Hulscorerne er kun delvist udfyldt.");
+  }
+
+  if (completedPars.length > 0 && completedPars.length !== 18) {
+    warnings.push("Par-værdierne er kun delvist udfyldt.");
+  }
+
+  if (completedHandicap.length > 0 && completedHandicap.length !== 18) {
+    warnings.push("Handicapslagene er kun delvist udfyldt.");
+  }
 
   if (
     round.frontNine !== null &&
@@ -456,22 +573,6 @@ function validateEditedRound(round) {
   ) {
     warnings.push(
       `Front 9 + Back 9 er ${round.frontNine + round.backNine}, men samlet score er ${round.score}.`
-    );
-  }
-
-  const completedHoles = round.holes.filter(Number.isFinite);
-
-  if (completedHoles.length > 0 && completedHoles.length !== 18) {
-    warnings.push("Hulscorerne er kun delvist udfyldt.");
-  }
-
-  if (
-    completedHoles.length === 18 &&
-    round.score !== null &&
-    completedHoles.reduce((sum, hole) => sum + hole, 0) !== round.score
-  ) {
-    warnings.push(
-      `Summen af hulscorerne er ${completedHoles.reduce((sum, hole) => sum + hole, 0)}, men samlet score er ${round.score}.`
     );
   }
 
@@ -556,25 +657,12 @@ function bindRoundEditing() {
       const originalRound = state.rounds[roundIndex];
       const editedValues = parseRoundEditForm(form);
 
-      editedValues.fir = calculatePercentage(
-        editedValues.firMade,
-        editedValues.firPossible,
-        editedValues.fir
-      );
+      const calculatedValues = enrichRoundCalculations({
+        ...originalRound,
+        ...editedValues
+      });
 
-      editedValues.gir = calculatePercentage(
-        editedValues.girMade,
-        editedValues.girPossible,
-        editedValues.gir
-      );
-
-      editedValues.upAndDown = calculatePercentage(
-        editedValues.upAndDownMade,
-        editedValues.upAndDownPossible,
-        editedValues.upAndDown
-      );
-
-      const validation = validateEditedRound(editedValues);
+      const validation = validateEditedRound(calculatedValues);
 
       if (validation.errors.length) {
         showRoundValidation(form, validation.errors, "error");
@@ -593,9 +681,8 @@ function bindRoundEditing() {
       }
 
       const updatedRound = {
-        ...originalRound,
-        ...editedValues,
-        id: originalRound.id || createRoundId(editedValues),
+        ...calculatedValues,
+        id: originalRound.id || createRoundId(calculatedValues),
         updatedAt: new Date().toISOString()
       };
 
@@ -830,17 +917,25 @@ function createOcrRound(input) {
     firPossible: pendingGarminRound?.firPossible ?? null,
     girMade: pendingGarminRound?.girMade ?? null,
     girPossible: pendingGarminRound?.girPossible ?? null,
-    upAndDown: pendingGarminRound?.upAndDown ?? null,
-    upAndDownMade: pendingGarminRound?.upAndDownMade ?? null,
-    upAndDownPossible: pendingGarminRound?.upAndDownPossible ?? null,
-    pars: pendingGarminRound?.pars ?? null,
-    bogeys: pendingGarminRound?.bogeys ?? null,
-    doubleBogeyPlus: pendingGarminRound?.doubleBogeyPlus ?? null,
     frontNine: pendingGarminRound?.frontNine ?? null,
     backNine: pendingGarminRound?.backNine ?? null,
     holes: Array.isArray(pendingGarminRound?.holes)
       ? [...pendingGarminRound.holes]
       : [],
+    holePars: Array.isArray(pendingGarminRound?.holePars)
+      ? [...pendingGarminRound.holePars]
+      : [],
+    holeHandicapStrokes: Array.isArray(
+      pendingGarminRound?.holeHandicapStrokes
+    )
+      ? [...pendingGarminRound.holeHandicapStrokes]
+      : [],
+    eaglesOrBetter: pendingGarminRound?.eaglesOrBetter ?? null,
+    birdies: pendingGarminRound?.birdies ?? null,
+    pars: pendingGarminRound?.pars ?? null,
+    bogeys: pendingGarminRound?.bogeys ?? null,
+    doubleBogeyPlus: pendingGarminRound?.doubleBogeyPlus ?? null,
+    completedHoles: pendingGarminRound?.completedHoles ?? 0,
     ocrImages: Array.isArray(pendingGarminRound?.images)
       ? [...pendingGarminRound.images]
       : [],
@@ -848,8 +943,9 @@ function createOcrRound(input) {
     importedAt: new Date().toISOString()
   };
 
-  round.id = createRoundId(round);
-  return round;
+  const enriched = enrichRoundCalculations(round);
+  enriched.id = createRoundId(enriched);
+  return enriched;
 }
 
 function findDuplicateRoundIndex(rounds, candidate) {
