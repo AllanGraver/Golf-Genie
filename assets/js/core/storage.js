@@ -1,4 +1,7 @@
-import { DEMO_CLUBS, DEMO_ROUNDS } from "../../data/demo-data.js";
+import {
+  DEMO_CLUBS,
+  DEMO_ROUNDS
+} from "../../data/demo-data.js";
 
 const KEY = "golfpulse-editable-v1";
 
@@ -13,10 +16,21 @@ export const DEFAULT_PROFILE = {
 export function loadState() {
   try {
 
-    const state =
-      JSON.parse(localStorage.getItem(KEY));
+    const state = JSON.parse(
+      localStorage.getItem(KEY)
+    );
 
-    return state || defaults();
+    const defaultState = defaults();
+
+    return {
+      ...defaultState,
+      ...state,
+
+      profile: {
+        ...DEFAULT_PROFILE,
+        ...(state?.profile || {})
+      }
+    };
 
   } catch {
 
@@ -36,23 +50,29 @@ export function defaults() {
   return {
     page: "home",
 
-    clubs: structuredClone(DEMO_CLUBS),
+    clubs: structuredClone(
+      DEMO_CLUBS
+    ),
 
-    rounds: structuredClone(DEMO_ROUNDS),
+    rounds: structuredClone(
+      DEMO_ROUNDS
+    ),
 
     clubIndex: 4,
 
-    profile: structuredClone(DEFAULT_PROFILE),
+    profile: structuredClone(
+      DEFAULT_PROFILE
+    ),
 
     status: null
   };
 }
 
 export function resetState() {
+
   const state = defaults();
 
   saveState(state);
 
   return state;
 }
-``
