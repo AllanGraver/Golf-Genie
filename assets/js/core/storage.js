@@ -1,6 +1,5 @@
 import {
-  DEMO_CLUBS,
-  DEMO_ROUNDS
+  DEMO_CLUBS
 } from "../../data/demo-data.js";
 
 const KEY = "golfpulse-editable-v1";
@@ -42,6 +41,7 @@ export function loadState() {
     return defaults();
 
   }
+
 }
 
 export function saveState(state) {
@@ -63,11 +63,9 @@ export function defaults() {
       DEMO_CLUBS
     ),
 
-    rounds: structuredClone(
-      DEMO_ROUNDS
-    ),
+    rounds: [],
 
-    clubIndex: 4,
+    clubIndex: 0,
 
     profile: structuredClone(
       DEFAULT_PROFILE
