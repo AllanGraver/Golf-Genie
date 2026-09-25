@@ -1,1 +1,50 @@
-import {card,pageHeader,sourceBadge} from "../components/ui.js";export function trainingPage(){return `<div class="page">${pageHeader("DATABASERET TRÆNING","Approach-kontrol","Fokus baseret på forskellen mellem kapacitet og baneperformance.")}${card(`${sourceBadge("TrackMan")}<h2 class="card-title">7-, 8- og 9-jern</h2><p class="text-muted">Slå 5 bolde mod hver målzone, og registrér carry og sidespredning.</p><div class="metric-grid metric-grid--3">${[130,140,150].map(x=>`<button class="button button--outline drill">${x} m</button>`).join("")}</div>`,true)}</div>`}
+import {
+  card,
+  pageHeader,
+  sourceBadge
+} from "../components/ui.js";
+
+export function trainingPage() {
+  return `
+    <div class="page">
+
+      ${pageHeader(
+        "DATABASERET TRÆNING",
+        "Approach-kontrol",
+        "Fokus baseret på forskellen mellem kapacitet og baneperformance."
+      )}
+
+      ${card(`
+        ${sourceBadge("TrackMan")}
+
+        <h2 class="card-title">
+          7-, 8- og 9-jern
+        </h2>
+
+        <p class="text-muted">
+          Slå 5 bolde mod hver målzone og registrér
+          carry samt sidespredning.
+        </p>
+
+        <div class="metric-grid metric-grid--3">
+
+          ${[130, 140, 150]
+            .map(
+              (distance) => `
+                <button
+                  class="button button--outline drill"
+                  type="button"
+                >
+                  ${distance} m
+                </button>
+              `
+            )
+            .join("")}
+
+        </div>
+
+      `, true)}
+
+    </div>
+  `;
+}
