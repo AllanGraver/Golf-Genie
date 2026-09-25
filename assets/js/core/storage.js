@@ -14,6 +14,7 @@ export const DEFAULT_PROFILE = {
 };
 
 export function loadState() {
+
   try {
 
     const state = JSON.parse(
@@ -29,6 +30,10 @@ export function loadState() {
       profile: {
         ...DEFAULT_PROFILE,
         ...(state?.profile || {})
+      },
+
+      courseNotes: {
+        ...(state?.courseNotes || {})
       }
     };
 
@@ -40,14 +45,18 @@ export function loadState() {
 }
 
 export function saveState(state) {
+
   localStorage.setItem(
     KEY,
     JSON.stringify(state)
   );
+
 }
 
 export function defaults() {
+
   return {
+
     page: "home",
 
     clubs: structuredClone(
@@ -64,8 +73,12 @@ export function defaults() {
       DEFAULT_PROFILE
     ),
 
+    courseNotes: {},
+
     status: null
+
   };
+
 }
 
 export function resetState() {
@@ -75,4 +88,5 @@ export function resetState() {
   saveState(state);
 
   return state;
+
 }
