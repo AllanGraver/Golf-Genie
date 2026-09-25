@@ -28,7 +28,7 @@ const NAV = [
 
 let state = loadState();
 
-const byId = id => document.getElementById(id);
+const byId = (id) => document.getElementById(id);
 
 const pages = {
   home: homePage,
@@ -40,16 +40,13 @@ const pages = {
 };
 
 function renderHeader() {
-
   byId("appHeader").innerHTML = `
     <button class="brand" data-page="home">
       <span class="brand__logo">⚑</span>
-
       <span>
         <span class="brand__name">
           GOLF<span>PULSE</span>
         </span>
-
         <span class="brand__tagline">
           EDITABLE HUB
         </span>
@@ -61,39 +58,36 @@ function renderHeader() {
 }
 
 function renderNav() {
-
   byId("bottomNav").innerHTML = NAV.map(
-    ([p, i, l]) => `
+    ([page, icon, label]) => `
       <button
         class="nav-button ${
-          state.page === p
+          state.page === page
             ? "nav-button--active"
             : ""
         }"
-        data-page="${p}">
-
+        data-page="${page}"
+      >
         <span class="nav-button__icon">
-          ${i}
+          ${icon}
         </span>
 
-        ${l}
-
+        ${label}
       </button>
     `
   ).join("");
 
   byId("sideNav").innerHTML = NAV.map(
-    ([p, i, l]) => `
+    ([page, icon, label]) => `
       <button
         class="side-button ${
-          state.page === p
+          state.page === page
             ? "side-button--active"
             : ""
         }"
-        data-page="${p}">
-
-        ${i} ${l}
-
+        data-page="${page}"
+      >
+        ${icon} ${label}
       </button>
     `
   ).join("");
@@ -103,68 +97,62 @@ function bind() {
 
   document
     .querySelectorAll("[data-page]")
-    .forEach(button =>
+    .forEach(button => {
       button.onclick = () => {
-
-        state.page =
-          button.dataset.page;
-
+        state.page = button.dataset.page;
         saveState(state);
-
         render();
-      }
-    );
+      };
+    });
 
   document
     .querySelectorAll("[data-club]")
-    .forEach(button =>
+    .forEach(button => {
       button.onclick = () => {
-
         state.clubIndex = Number(
           button.dataset.club
         );
 
         saveState(state);
-
         render();
-      }
-    );
+      };
+    });
 
-  if (byId("previousClub"))
+  if (byId("previousClub")) {
     byId("previousClub").onclick = () => {
-
       state.clubIndex = Math.max(
         0,
         state.clubIndex - 1
       );
 
       saveState(state);
-
       render();
     };
+  }
 
-  if (byId("nextClub"))
+  if (byId("nextClub")) {
     byId("nextClub").onclick = () => {
-
       state.clubIndex = Math.min(
         state.clubs.length - 1,
         state.clubIndex + 1
       );
 
       saveState(state);
-
       render();
     };
+  }
 
-  if (byId("trackmanButton"))
+  if (byId("trackmanButton")) {
     byId("trackmanButton").onclick = () =>
       byId("trackmanFile").click();
+  }
 
-  if (byId("garminButton"))
+  if (byId("garminButton")) {
     byId("garminButton").onclick = () =>
       byId("garminFile").click();
+  }
 
-  if (byId("resetButton"))
+  if (byId("resetButton")) {
     byId("resetButton").onclick = () => {
 
       state = resetState();
@@ -176,12 +164,12 @@ function bind() {
 
       render();
     };
+  }
 
-  if (byId("save-profile"))
+  if (byId("save-profile")) {
     byId("save-profile").onclick = () => {
 
       state.profile = {
-
         handicap: Number(
           byId("hcp").value
         ),
@@ -199,7 +187,6 @@ function bind() {
         age: Number(
           byId("age").value
         )
-
       };
 
       saveState(state);
@@ -211,15 +198,16 @@ function bind() {
 
       render();
     };
+  }
 
   document
     .querySelectorAll(".drill")
-    .forEach(button =>
+    .forEach(button => {
       button.onclick = () =>
         button.classList.toggle(
           "button--accent"
-        )
-    );
+        );
+    });
 }
 
 function render() {
@@ -235,7 +223,7 @@ function render() {
 }
 
 byId("trackmanFile").onchange =
-  async event => {
+  async (event) => {
 
     try {
 
@@ -266,12 +254,11 @@ byId("trackmanFile").onchange =
     }
 
     saveState(state);
-
     render();
   };
 
 byId("garminFile").onchange =
-  async event => {
+  async (event) => {
 
     try {
 
@@ -306,9 +293,7 @@ byId("garminFile").onchange =
     }
 
     saveState(state);
-
     render();
   };
 
 render();
-`
