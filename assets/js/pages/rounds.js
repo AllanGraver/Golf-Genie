@@ -5,36 +5,50 @@ import {
   sourceBadge
 } from "../components/ui.js";
 
-function average(values) {
-  const valid = values
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
+}
+
+function numericValues(values) {
+  return values
     .map(Number)
     .filter(Number.isFinite);
+}
+
+function average(values) {
+  const valid = numericValues(values);
 
   if (!valid.length) {
     return null;
   }
 
-  return (
+  const result =
     valid.reduce(
       (sum, value) => sum + value,
       0
-    ) / valid.length
-  ).toFixed(1);
+    ) / valid.length;
+
+  return Number(result.toFixed(1));
 }
 
 function minimum(values) {
-  const valid = values
-    .map(Number)
-    .filter(Number.isFinite);
+  const valid = numericValues(values);
 
-  if (!valid.length) {
-    return null;
-  }
-
-  return Math.min(...valid);
+  return valid.length
+    ? Math.min(...valid)
+    : null;
 }
 
-function formatMetric(value, suffix = "") {
+function formatNumber(value, suffix = "") {
   if (
     value === null ||
     value === undefined ||
@@ -43,16 +57,795 @@ function formatMetric(value, suffix = "") {
     return "–";
   }
 
-  return `${value}${suffix}`;
+  const formatted =
+    String(value).replace(".", ",");
+
+  return `${formatted}${suffix}`;
+}
+
+function formatRelativeToPar(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "–";
+  }
+
+  if (number === 0) {
+    return "E";
+  }
+
+  return number > 0
+    ? `+${number}`
+    : String(number);
+}
+
+function normalizeCourseName(value) {
+  return String(value || "Ukendt bane")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function createCourseKey(value) {
+  return normalizeCourseName(value)
+    .toLocaleLowerCase("da-DK");
+}
+
+function sortRoundsByDate(rounds) {
+  return [...rounds].sort(
+    (a, b) =>
+      String(b.date || "")
+        .localeCompare(
+          String(a.date || "")
+        )
+  );
+}
+
+function getRoundId(round, index) {
+  return String(
+    round.id ||
+    [
+      round.course || "course",
+      round.date || "date",
+      round.score ?? index
+    ].join("-")
+  );
+}
+
+function createHoleValues(round) {
+  const existingHoles =
+    Array.isArray(round.holes)
+      ? round.holes
+      : [];
+
+  return Array.from(
+    { length: 18 },
+    (_, index) => {
+      const value =
+        Number(existingHoles[index]);
+
+      return Number.isFinite(value)
+        ? value
+        : "";
+    }
+  );
+}
+
+function numberInput({
+  id,
+  label,
+  value,
+  min,
+  max,
+  step = "1",
+  dataField = ""
+}) {
+  return `
+    <div class="round-edit__field">
+      <label for="${escapeAttribute(id)}">
+        ${escapeHtml(label)}
+      </label>
+
+      <input
+        id="${escapeAttribute(id)}"
+        type="number"
+        inputmode="${
+          step === "1"
+            ? "numeric"
+            : "decimal"
+        }"
+        step="${escapeAttribute(step)}"
+        ${
+          min !== undefined
+            ? `min="${min}"`
+            : ""
+        }
+        ${
+          max !== undefined
+            ? `max="${max}"`
+            : ""
+        }
+        ${
+          dataField
+            ? `data-round-field="${escapeAttribute(dataField)}"`
+            : ""
+        }
+        value="${escapeAttribute(value ?? "")}"
+      >
+    </div>
+  `;
+}
+
+function renderHoleInputs(roundId, round) {
+  const holes =
+    createHoleValues(round);
+
+  return `
+    <fieldset class="round-edit__section">
+      <legend>
+        Hulscorer
+      </legend>
+
+      <p class="text-muted">
+        Indtast slag på hvert hul. Summen kan kontrolleres
+        mod den samlede score ved gemning.
+      </p>
+
+      <div class="hole-grid">
+        ${holes.map(
+          (value, index) => `
+            <div class="hole-field">
+              <label
+                for="round-${escapeAttribute(roundId)}-hole-${index + 1}"
+              >
+                Hul ${index + 1}
+              </label>
+
+              <input
+                id="round-${escapeAttribute(roundId)}-hole-${index + 1}"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="20"
+                step="1"
+                data-round-hole="${index}"
+                value="${escapeAttribute(value)}"
+              >
+            </div>
+          `
+        ).join("")}
+      </div>
+    </fieldset>
+  `;
+}
+
+function renderEditForm(round, roundId) {
+  return `
+    <form
+      class="round-edit"
+      data-round-edit-form="${escapeAttribute(roundId)}"
+      novalidate
+    >
+      <div class="round-edit__heading">
+        <div>
+          <p class="eyebrow">
+            REDIGER RUNDE
+          </p>
+
+          <h3 class="card-title">
+            ${escapeHtml(round.course || "Ukendt bane")}
+          </h3>
+        </div>
+      </div>
+
+      <fieldset class="round-edit__section">
+        <legend>
+          Rundeoplysninger
+        </legend>
+
+        <div class="round-edit__grid">
+          <div class="round-edit__field round-edit__field--wide">
+            <label for="round-${escapeAttribute(roundId)}-course">
+              Bane
+            </label>
+
+            <input
+              id="round-${escapeAttribute(roundId)}-course"
+              type="text"
+              data-round-field="course"
+              value="${escapeAttribute(round.course || "")}"
+              required
+            >
+          </div>
+
+          <div class="round-edit__field">
+            <label for="round-${escapeAttribute(roundId)}-tees">
+              Teested
+            </label>
+
+            <input
+              id="round-${escapeAttribute(roundId)}-tees"
+              type="text"
+              data-round-field="tees"
+              value="${escapeAttribute(round.tees || "")}"
+            >
+          </div>
+
+          <div class="round-edit__field">
+            <label for="round-${escapeAttribute(roundId)}-date">
+              Dato
+            </label>
+
+            <input
+              id="round-${escapeAttribute(roundId)}-date"
+              type="date"
+              data-round-field="date"
+              value="${escapeAttribute(round.date || "")}"
+              required
+            >
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="round-edit__section">
+        <legend>
+          Score
+        </legend>
+
+        <div class="round-edit__grid">
+          ${numberInput({
+            id: `round-${roundId}-score`,
+            label: "Samlet score",
+            value: round.score,
+            min: 1,
+            max: 250,
+            dataField: "score"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-relative`,
+            label: "I forhold til par",
+            value: round.relativeToPar,
+            min: -30,
+            max: 100,
+            dataField: "relativeToPar"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-points`,
+            label: "Stableford-point",
+            value: round.points,
+            min: 0,
+            max: 100,
+            dataField: "points"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-front-nine`,
+            label: "Front 9",
+            value: round.frontNine,
+            min: 1,
+            max: 125,
+            dataField: "frontNine"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-back-nine`,
+            label: "Back 9",
+            value: round.backNine,
+            min: 1,
+            max: 125,
+            dataField: "backNine"
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset class="round-edit__section">
+        <legend>
+          Fairways og greens
+        </legend>
+
+        <div class="round-edit__grid">
+          ${numberInput({
+            id: `round-${roundId}-fir`,
+            label: "FIR %",
+            value: round.fir,
+            min: 0,
+            max: 100,
+            step: "0.1",
+            dataField: "fir"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-fir-made`,
+            label: "Fairways ramt",
+            value: round.firMade,
+            min: 0,
+            max: 18,
+            dataField: "firMade"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-fir-possible`,
+            label: "Mulige fairways",
+            value: round.firPossible,
+            min: 0,
+            max: 18,
+            dataField: "firPossible"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-gir`,
+            label: "GIR %",
+            value: round.gir,
+            min: 0,
+            max: 100,
+            step: "0.1",
+            dataField: "gir"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-gir-made`,
+            label: "Greens ramt",
+            value: round.girMade,
+            min: 0,
+            max: 18,
+            dataField: "girMade"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-gir-possible`,
+            label: "Mulige greens",
+            value: round.girPossible,
+            min: 0,
+            max: 18,
+            dataField: "girPossible"
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset class="round-edit__section">
+        <legend>
+          Kort spil og putting
+        </legend>
+
+        <div class="round-edit__grid">
+          ${numberInput({
+            id: `round-${roundId}-putts`,
+            label: "Putts",
+            value: round.putts,
+            min: 0,
+            max: 100,
+            dataField: "putts"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-up-down`,
+            label: "Up & Down %",
+            value: round.upAndDown,
+            min: 0,
+            max: 100,
+            step: "0.1",
+            dataField: "upAndDown"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-up-down-made`,
+            label: "Up & Down opnået",
+            value: round.upAndDownMade,
+            min: 0,
+            max: 18,
+            dataField: "upAndDownMade"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-up-down-possible`,
+            label: "Up & Down forsøg",
+            value: round.upAndDownPossible,
+            min: 0,
+            max: 18,
+            dataField: "upAndDownPossible"
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset class="round-edit__section">
+        <legend>
+          Scoreresultat
+        </legend>
+
+        <div class="round-edit__grid">
+          ${numberInput({
+            id: `round-${roundId}-pars`,
+            label: "Pars",
+            value: round.pars,
+            min: 0,
+            max: 18,
+            dataField: "pars"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-bogeys`,
+            label: "Bogeys",
+            value: round.bogeys,
+            min: 0,
+            max: 18,
+            dataField: "bogeys"
+          })}
+
+          ${numberInput({
+            id: `round-${roundId}-double-plus`,
+            label: "Double eller værre",
+            value: round.doubleBogeyPlus,
+            min: 0,
+            max: 18,
+            dataField: "doubleBogeyPlus"
+          })}
+        </div>
+      </fieldset>
+
+      ${renderHoleInputs(roundId, round)}
+
+      <div
+        class="round-edit__validation"
+        data-round-validation="${escapeAttribute(roundId)}"
+        hidden
+      ></div>
+
+      <div class="round-actions">
+        <button
+          class="button button--outline cancel-round-edit"
+          data-round-id="${escapeAttribute(roundId)}"
+          type="button"
+        >
+          Annuller
+        </button>
+
+        <button
+          class="button button--accent save-round-edit"
+          data-round-id="${escapeAttribute(roundId)}"
+          type="button"
+        >
+          Gem ændringer
+        </button>
+      </div>
+    </form>
+  `;
+}
+
+function renderRoundDetails(round) {
+  return `
+    <div class="round-history__metrics">
+      ${metric(
+        "FIR",
+        round.fir != null
+          ? formatNumber(round.fir, "%")
+          : "–"
+      )}
+
+      ${metric(
+        "GIR",
+        round.gir != null
+          ? formatNumber(round.gir, "%")
+          : "–"
+      )}
+
+      ${metric(
+        "Putts",
+        formatNumber(round.putts)
+      )}
+
+      ${metric(
+        "Front 9",
+        formatNumber(round.frontNine)
+      )}
+
+      ${metric(
+        "Back 9",
+        formatNumber(round.backNine)
+      )}
+
+      ${metric(
+        "Pars",
+        formatNumber(round.pars)
+      )}
+
+      ${metric(
+        "Bogeys",
+        formatNumber(round.bogeys)
+      )}
+
+      ${metric(
+        "Double+",
+        formatNumber(round.doubleBogeyPlus)
+      )}
+    </div>
+  `;
+}
+
+function renderRoundHistory(round, roundId, isEditing) {
+  if (isEditing) {
+    return `
+      <article class="round-history round-history--editing">
+        ${renderEditForm(round, roundId)}
+      </article>
+    `;
+  }
+
+  return `
+    <article class="round-history">
+      <div class="round-history__header">
+        <div>
+          <strong>
+            ${escapeHtml(round.date || "Ukendt dato")}
+          </strong>
+
+          ${
+            round.tees
+              ? `
+                <p class="text-muted">
+                  ${escapeHtml(round.tees)}
+                </p>
+              `
+              : ""
+          }
+        </div>
+
+        <div class="round-history__score">
+          ${formatNumber(round.score)}
+
+          <small>
+            ${formatRelativeToPar(round.relativeToPar)}
+          </small>
+        </div>
+      </div>
+
+      ${renderRoundDetails(round)}
+
+      <div class="round-actions">
+        <button
+          class="button button--outline edit-round"
+          data-round-id="${escapeAttribute(roundId)}"
+          type="button"
+        >
+          Rediger
+        </button>
+
+        <button
+          class="button button--danger delete-round"
+          data-round-id="${escapeAttribute(roundId)}"
+          type="button"
+        >
+          Slet
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function renderCourseCard(
+  state,
+  course,
+  rounds
+) {
+  const sortedRounds =
+    sortRoundsByDate(rounds);
+
+  const latest =
+    sortedRounds[0];
+
+  const courseKey =
+    createCourseKey(course);
+
+  const note =
+    state.courseNotes?.[course] ??
+    state.courseNotes?.[courseKey] ??
+    "";
+
+  const avgScore =
+    average(
+      rounds.map(round => round.score)
+    );
+
+  const bestScore =
+    minimum(
+      rounds.map(round => round.score)
+    );
+
+  const avgFir =
+    average(
+      rounds.map(round => round.fir)
+    );
+
+  const avgGir =
+    average(
+      rounds.map(round => round.gir)
+    );
+
+  const avgPutts =
+    average(
+      rounds.map(round => round.putts)
+    );
+
+  const avgFrontNine =
+    average(
+      rounds.map(round => round.frontNine)
+    );
+
+  const avgBackNine =
+    average(
+      rounds.map(round => round.backNine)
+    );
+
+  const avgPars =
+    average(
+      rounds.map(round => round.pars)
+    );
+
+  const avgBogeys =
+    average(
+      rounds.map(round => round.bogeys)
+    );
+
+  const avgDoubleBogeyPlus =
+    average(
+      rounds.map(
+        round => round.doubleBogeyPlus
+      )
+    );
+
+  return card(`
+    <div class="course-summary">
+      <div class="course-summary__header">
+        <div>
+          ${sourceBadge("Garmin")}
+
+          <h2 class="card-title">
+            ${escapeHtml(course)}
+          </h2>
+
+          <p class="text-muted">
+            ${rounds.length}
+            ${
+              rounds.length === 1
+                ? "runde"
+                : "runder"
+            }
+          </p>
+        </div>
+
+        <div class="round-card__score">
+          ${formatNumber(avgScore)}
+
+          <small>
+            Gns.
+          </small>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        ${metric(
+          "Bedste score",
+          formatNumber(bestScore)
+        )}
+
+        ${metric(
+          "Seneste score",
+          formatNumber(latest?.score)
+        )}
+      </div>
+
+      <div class="metric-grid metric-grid--3">
+        ${metric(
+          "FIR",
+          avgFir != null
+            ? formatNumber(avgFir, "%")
+            : "–"
+        )}
+
+        ${metric(
+          "GIR",
+          avgGir != null
+            ? formatNumber(avgGir, "%")
+            : "–"
+        )}
+
+        ${metric(
+          "Putts",
+          formatNumber(avgPutts)
+        )}
+      </div>
+
+      <div class="metric-grid">
+        ${metric(
+          "Front 9",
+          formatNumber(avgFrontNine)
+        )}
+
+        ${metric(
+          "Back 9",
+          formatNumber(avgBackNine)
+        )}
+      </div>
+
+      <div class="metric-grid metric-grid--3">
+        ${metric(
+          "Pars",
+          formatNumber(avgPars)
+        )}
+
+        ${metric(
+          "Bogeys",
+          formatNumber(avgBogeys)
+        )}
+
+        ${metric(
+          "Double+",
+          formatNumber(avgDoubleBogeyPlus)
+        )}
+      </div>
+
+      <p class="text-muted">
+        Seneste runde:
+        ${escapeHtml(latest?.date || "–")}
+      </p>
+
+      <div class="course-note-section">
+        <label
+          for="course-note-${escapeAttribute(courseKey)}"
+        >
+          Banenoter
+        </label>
+
+        <textarea
+          id="course-note-${escapeAttribute(courseKey)}"
+          class="course-note"
+          rows="4"
+          data-course="${escapeAttribute(course)}"
+          placeholder="Skriv strategi, køllevalg eller erfaringer fra banen..."
+        >${escapeHtml(note)}</textarea>
+
+        <button
+          class="button button--outline save-course-note"
+          data-course="${escapeAttribute(course)}"
+          type="button"
+        >
+          Gem banenote
+        </button>
+      </div>
+
+      <div class="round-history-list">
+        <h3 class="card-title">
+          Historik
+        </h3>
+
+        ${sortedRounds.map((round, index) => {
+          const roundId =
+            getRoundId(round, index);
+
+          const isEditing =
+            String(state.editRoundId || "") ===
+            roundId;
+
+          return renderRoundHistory(
+            round,
+            roundId,
+            isEditing
+          );
+        }).join("")}
+      </div>
+    </div>
+  `);
 }
 
 export function roundsPage(state) {
+  const rounds =
+    Array.isArray(state.rounds)
+      ? state.rounds
+      : [];
 
-  if (!state.rounds?.length) {
-
+  if (!rounds.length) {
     return `
       <div class="page">
-
         ${pageHeader(
           "GARMIN GOLF",
           "Mine baner",
@@ -60,309 +853,86 @@ export function roundsPage(state) {
         )}
 
         ${card(`
-          <h2 class="card-title">
-            Importér din første runde
-          </h2>
+          <div class="empty-state">
+            <h2 class="card-title">
+              Importér din første runde
+            </h2>
 
-          <p class="text-muted">
-            Gå til Data og importér dine Garmin Golf screenshots.
-          </p>
+            <p class="text-muted">
+              Gå til Data og importér dine Garmin Golf-billeder.
+            </p>
 
-          <button
-            class="button button--accent button--full"
-            data-page="data"
-          >
-            Gå til import
-          </button>
+            <button
+              class="button button--accent button--full"
+              data-page="data"
+              type="button"
+            >
+              Gå til import
+            </button>
+          </div>
         `)}
-
       </div>
     `;
   }
 
-  const grouped = {};
+  const groupedCourses =
+    new Map();
 
-  state.rounds.forEach((round) => {
-
+  rounds.forEach((round) => {
     const course =
-      round.course || "Ukendt bane";
+      normalizeCourseName(round.course);
 
-    if (!grouped[course]) {
-      grouped[course] = [];
+    const courseKey =
+      createCourseKey(course);
+
+    if (!groupedCourses.has(courseKey)) {
+      groupedCourses.set(courseKey, {
+        course,
+        rounds: []
+      });
     }
 
-    grouped[course].push(round);
-
+    groupedCourses
+      .get(courseKey)
+      .rounds
+      .push(round);
   });
 
   const courses =
-    Object.entries(grouped);
+    Array.from(
+      groupedCourses.values()
+    ).sort(
+      (a, b) =>
+        a.course.localeCompare(
+          b.course,
+          "da-DK"
+        )
+    );
 
   return `
     <div class="page">
-
       ${pageHeader(
         "GARMIN GOLF",
         "Mine baner",
-        `${state.rounds.length} runder på ${courses.length} baner`
+        `${rounds.length} ${
+          rounds.length === 1
+            ? "runde"
+            : "runder"
+        } på ${courses.length} ${
+          courses.length === 1
+            ? "bane"
+            : "baner"
+        }`
       )}
 
-      ${courses.map(([course, rounds]) => {
-
-        const sortedRounds =
-          rounds
-            .slice()
-            .sort(
-              (a, b) =>
-                String(b.date || "")
-                  .localeCompare(
-                    String(a.date || "")
-                  )
-            );
-
-        const latest =
-          sortedRounds[0];
-
-        const bestScore =
-          minimum(
-            rounds.map(
-              r => r.score
-            )
-          );
-
-        const avgScore =
-          average(
-            rounds.map(
-              r => r.score
-            )
-          );
-
-        const avgFir =
-          average(
-            rounds.map(
-              r => r.fir
-            )
-          );
-
-        const avgGir =
-          average(
-            rounds.map(
-              r => r.gir
-            )
-          );
-
-        const avgPutts =
-          average(
-            rounds.map(
-              r => r.putts
-            )
-          );
-
-        const avgFront =
-          average(
-            rounds.map(
-              r => r.frontNine
-            )
-          );
-
-        const avgBack =
-          average(
-            rounds.map(
-              r => r.backNine
-            )
-          );
-
-        const avgPars =
-          average(
-            rounds.map(
-              r => r.pars
-            )
-          );
-
-        const avgBogeys =
-          average(
-            rounds.map(
-              r => r.bogeys
-            )
-          );
-
-        const avgDoubleBogeys =
-          average(
-            rounds.map(
-              r => r.doubleBogeyPlus
-            )
-          );
-
-        const note =
-          state.courseNotes?.[course] || "";
-
-        return card(`
-
-          <div class="row">
-
-            <div>
-
-              ${sourceBadge("Garmin")}
-
-              <h2 class="card-title">
-                ${course}
-              </h2>
-
-              <p class="text-muted">
-                ${rounds.length}
-                ${rounds.length === 1
-                  ? " runde"
-                  : " runder"}
-              </p>
-
-            </div>
-
-            <div class="round-card__score">
-              ${avgScore || "–"}
-            </div>
-
-          </div>
-
-          <div class="metric-grid">
-
-            ${metric(
-              "Bedste score",
-              formatMetric(bestScore)
-            )}
-
-            ${metric(
-              "Seneste score",
-              formatMetric(latest.score)
-            )}
-
-          </div>
-
-          <div class="metric-grid metric-grid--3">
-
-            ${metric(
-              "FIR",
-              formatMetric(
-                avgFir,
-                "%"
-              )
-            )}
-
-            ${metric(
-              "GIR",
-              formatMetric(
-                avgGir,
-                "%"
-              )
-            )}
-
-            ${metric(
-              "Putts",
-              formatMetric(
-                avgPutts
-              )
-            )}
-
-          </div>
-
-          <div class="metric-grid">
-
-            ${metric(
-              "Front 9",
-              formatMetric(
-                avgFront
-              )
-            )}
-
-            ${metric(
-              "Back 9",
-              formatMetric(
-                avgBack
-              )
-            )}
-
-          </div>
-
-          <div class="metric-grid metric-grid--3">
-
-            ${metric(
-              "Pars",
-              formatMetric(
-                avgPars
-              )
-            )}
-
-            ${metric(
-              "Bogeys",
-              formatMetric(
-                avgBogeys
-              )
-            )}
-
-            ${metric(
-              "Double",
-              formatMetric(
-                avgDoubleBogeys
-              )
-            )}
-
-          </div>
-
-          <p class="text-muted">
-            Seneste runde: ${latest.date}
-          </p>
-
-          <label>
-            Banenoter
-          </label>
-
-          <textarea
-            class="course-note"
-            rows="4"
-            data-course="${course}"
-          >${note}</textarea>
-
-          <button
-            class="button button--outline save-course-note"
-            data-course="${course}"
-          >
-            Gem noter
-          </button>
-
-          <hr>
-
-          <h3 class="card-title">
-            Historik
-          </h3>
-
-          ${sortedRounds.map(round => `
-
-            <div class="metric">
-
-              <strong>
-                ${round.date}
-              </strong>
-
-              <div class="text-muted">
-
-                Score:
-                ${round.score ?? "–"}
-
-                ${
-                  round.relativeToPar != null
-                    ? `(+${round.relativeToPar})`
-                    : ""
-                }
-
-              </div>
-
-            </div>
-
-          `).join("")}
-
-        `);
-
-      }).join("")}
-
+      ${courses.map(
+        ({ course, rounds: courseRounds }) =>
+          renderCourseCard(
+            state,
+            course,
+            courseRounds
+          )
+      ).join("")}
     </div>
   `;
 }
