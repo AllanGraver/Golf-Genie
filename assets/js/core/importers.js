@@ -443,4 +443,288 @@ export function importGarmin(data) {
           row,
           [
             "course",
-       
+            "coursename",
+            "banename"
+          ]
+        ),
+        "Ukendt bane"
+      );
+
+      const date = normalizeDate(
+        field(
+          row,
+          [
+            "date",
+            "rounddate",
+            "starttime",
+            "formattedstarttime"
+          ]
+        )
+      );
+
+      const score = number(
+        field(
+          row,
+          [
+            "score",
+            "totalscore",
+            "strokes"
+          ]
+        )
+      );
+
+      return {
+        id: createRoundId(
+          row,
+          index
+        ),
+
+        course,
+
+        tees: text(
+          field(
+            row,
+            [
+              "tees",
+              "tee",
+              "teename",
+              "teebox",
+              "teested"
+            ]
+          )
+        ),
+
+        date,
+
+        score,
+
+        relativeToPar: number(
+          field(
+            row,
+            [
+              "relativetopar",
+              "topar",
+              "overpar",
+              "scoretopar"
+            ]
+          )
+        ),
+
+        points: number(
+          field(
+            row,
+            [
+              "points",
+              "stableford",
+              "stablefordscore"
+            ]
+          )
+        ),
+
+        fir: number(
+          field(
+            row,
+            [
+              "fir",
+              "fairwaypercentage",
+              "fairwayspercentage"
+            ]
+          )
+        ),
+
+        firMade: number(
+          field(
+            row,
+            [
+              "firmade",
+              "fairwayshit",
+              "fairwaysmade"
+            ]
+          )
+        ),
+
+        firPossible: number(
+          field(
+            row,
+            [
+              "firpossible",
+              "fairwayspossible",
+              "fairwayattempts"
+            ]
+          )
+        ),
+
+        gir: number(
+          field(
+            row,
+            [
+              "gir",
+              "girpercentage",
+              "greensinregulationpercentage"
+            ]
+          )
+        ),
+
+        girMade: number(
+          field(
+            row,
+            [
+              "girmade",
+              "greensinregulation",
+              "greenshit"
+            ]
+          )
+        ),
+
+        girPossible: number(
+          field(
+            row,
+            [
+              "girpossible",
+              "greenspossible",
+              "greensinregulationpossible"
+            ]
+          )
+        ),
+
+        putts: number(
+          field(
+            row,
+            [
+              "putts",
+              "totalputts"
+            ]
+          )
+        ),
+
+        upAndDown: number(
+          field(
+            row,
+            [
+              "upanddown",
+              "upanddownpercentage",
+              "opogned"
+            ]
+          )
+        ),
+
+        upAndDownMade: number(
+          field(
+            row,
+            [
+              "upanddownmade",
+              "upanddownsuccessful"
+            ]
+          )
+        ),
+
+        upAndDownPossible: number(
+          field(
+            row,
+            [
+              "upanddownpossible",
+              "upanddownattempts"
+            ]
+          )
+        ),
+
+        pars: number(
+          field(
+            row,
+            [
+              "pars",
+              "parcount"
+            ]
+          )
+        ),
+
+        bogeys: number(
+          field(
+            row,
+            [
+              "bogeys",
+              "bogeycount"
+            ]
+          )
+        ),
+
+        doubleBogeyPlus: number(
+          field(
+            row,
+            [
+              "doublebogeyplus",
+              "doublebogeys",
+              "doublebogeyorworse"
+            ]
+          )
+        ),
+
+        frontNine: number(
+          field(
+            row,
+            [
+              "frontnine",
+              "front9",
+              "out",
+              "firstnine"
+            ]
+          )
+        ),
+
+        backNine: number(
+          field(
+            row,
+            [
+              "backnine",
+              "back9",
+              "in",
+              "secondnine"
+            ]
+          )
+        ),
+
+        holes: parseArray(
+          field(
+            row,
+            [
+              "holes",
+              "holescores",
+              "scorebyhole"
+            ]
+          )
+        ),
+
+        source: text(
+          field(
+            row,
+            [
+              "source"
+            ]
+          ),
+          "Garmin-fil"
+        ),
+
+        importedAt: text(
+          field(
+            row,
+            [
+              "importedat"
+            ]
+          ),
+          new Date().toISOString()
+        )
+      };
+    })
+    .filter(
+      (round) =>
+        round.score !== null
+    );
+
+  if (!rounds.length) {
+    throw new Error(
+      "Ingen gyldige scorekort blev fundet i Garmin-filen."
+    );
+  }
+
+  return rounds;
+}
