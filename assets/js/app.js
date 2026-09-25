@@ -45,7 +45,7 @@ function renderHeader() {
       <span class="brand__logo">⚑</span>
       <span>
         <span class="brand__name">
-          GOLF<span>PULSE</span>
+          GOLF<span>Genie</span>
         </span>
         <span class="brand__tagline">
           EDITABLE HUB
