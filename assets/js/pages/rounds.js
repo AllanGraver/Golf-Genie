@@ -6,7 +6,6 @@ import {
 } from "../components/ui.js";
 
 function average(values) {
-
   const valid = values
     .map(Number)
     .filter(Number.isFinite);
@@ -23,13 +22,70 @@ function average(values) {
   ).toFixed(1);
 }
 
+function minimum(values) {
+  const valid = values
+    .map(Number)
+    .filter(Number.isFinite);
+
+  if (!valid.length) {
+    return null;
+  }
+
+  return Math.min(...valid);
+}
+
+function formatMetric(value, suffix = "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "–";
+  }
+
+  return `${value}${suffix}`;
+}
+
 export function roundsPage(state) {
+
+  if (!state.rounds?.length) {
+
+    return `
+      <div class="page">
+
+        ${pageHeader(
+          "GARMIN GOLF",
+          "Mine baner",
+          "Ingen runder importeret endnu"
+        )}
+
+        ${card(`
+          <h2 class="card-title">
+            Importér din første runde
+          </h2>
+
+          <p class="text-muted">
+            Gå til Data og importér dine Garmin Golf screenshots.
+          </p>
+
+          <button
+            class="button button--accent button--full"
+            data-page="data"
+          >
+            Gå til import
+          </button>
+        `)}
+
+      </div>
+    `;
+  }
 
   const grouped = {};
 
-  state.rounds.forEach(round => {
+  state.rounds.forEach((round) => {
 
-    const course = round.course || "Ukendt bane";
+    const course =
+      round.course || "Ukendt bane";
 
     if (!grouped[course]) {
       grouped[course] = [];
@@ -53,16 +109,89 @@ export function roundsPage(state) {
 
       ${courses.map(([course, rounds]) => {
 
-        const latest =
+        const sortedRounds =
           rounds
             .slice()
             .sort(
               (a, b) =>
-                String(b.date)
+                String(b.date || "")
                   .localeCompare(
-                    String(a.date)
+                    String(a.date || "")
                   )
-            )[0];
+            );
+
+        const latest =
+          sortedRounds[0];
+
+        const bestScore =
+          minimum(
+            rounds.map(
+              r => r.score
+            )
+          );
+
+        const avgScore =
+          average(
+            rounds.map(
+              r => r.score
+            )
+          );
+
+        const avgFir =
+          average(
+            rounds.map(
+              r => r.fir
+            )
+          );
+
+        const avgGir =
+          average(
+            rounds.map(
+              r => r.gir
+            )
+          );
+
+        const avgPutts =
+          average(
+            rounds.map(
+              r => r.putts
+            )
+          );
+
+        const avgFront =
+          average(
+            rounds.map(
+              r => r.frontNine
+            )
+          );
+
+        const avgBack =
+          average(
+            rounds.map(
+              r => r.backNine
+            )
+          );
+
+        const avgPars =
+          average(
+            rounds.map(
+              r => r.pars
+            )
+          );
+
+        const avgBogeys =
+          average(
+            rounds.map(
+              r => r.bogeys
+            )
+          );
+
+        const avgDoubleBogeys =
+          average(
+            rounds.map(
+              r => r.doubleBogeyPlus
+            )
+          );
 
         const note =
           state.courseNotes?.[course] || "";
@@ -89,16 +218,22 @@ export function roundsPage(state) {
             </div>
 
             <div class="round-card__score">
-
-              ${
-                average(
-                  rounds.map(
-                    x => x.score
-                  )
-                ) ?? "–"
-              }
-
+              ${avgScore || "–"}
             </div>
+
+          </div>
+
+          <div class="metric-grid">
+
+            ${metric(
+              "Bedste score",
+              formatMetric(bestScore)
+            )}
+
+            ${metric(
+              "Seneste score",
+              formatMetric(latest.score)
+            )}
 
           </div>
 
@@ -106,48 +241,74 @@ export function roundsPage(state) {
 
             ${metric(
               "FIR",
-              average(
-                rounds.map(
-                  x => x.fir
-                )
+              formatMetric(
+                avgFir,
+                "%"
               )
-              ? `${average(
-                  rounds.map(
-                    x => x.fir
-                  )
-                )}%`
-              : "–"
             )}
 
             ${metric(
               "GIR",
-              average(
-                rounds.map(
-                  x => x.gir
-                )
+              formatMetric(
+                avgGir,
+                "%"
               )
-              ? `${average(
-                  rounds.map(
-                    x => x.gir
-                  )
-                )}%`
-              : "–"
             )}
 
             ${metric(
               "Putts",
-              average(
-                rounds.map(
-                  x => x.putts
-                )
-              ) ?? "–"
+              formatMetric(
+                avgPutts
+              )
+            )}
+
+          </div>
+
+          <div class="metric-grid">
+
+            ${metric(
+              "Front 9",
+              formatMetric(
+                avgFront
+              )
+            )}
+
+            ${metric(
+              "Back 9",
+              formatMetric(
+                avgBack
+              )
+            )}
+
+          </div>
+
+          <div class="metric-grid metric-grid--3">
+
+            ${metric(
+              "Pars",
+              formatMetric(
+                avgPars
+              )
+            )}
+
+            ${metric(
+              "Bogeys",
+              formatMetric(
+                avgBogeys
+              )
+            )}
+
+            ${metric(
+              "Double",
+              formatMetric(
+                avgDoubleBogeys
+              )
             )}
 
           </div>
 
           <p class="text-muted">
-            Seneste runde:
-            ${latest.date}
+            Seneste runde: ${latest.date}
           </p>
 
           <label>
@@ -166,6 +327,37 @@ export function roundsPage(state) {
           >
             Gem noter
           </button>
+
+          <hr>
+
+          <h3 class="card-title">
+            Historik
+          </h3>
+
+          ${sortedRounds.map(round => `
+
+            <div class="metric">
+
+              <strong>
+                ${round.date}
+              </strong>
+
+              <div class="text-muted">
+
+                Score:
+                ${round.score ?? "–"}
+
+                ${
+                  round.relativeToPar != null
+                    ? `(+${round.relativeToPar})`
+                    : ""
+                }
+
+              </div>
+
+            </div>
+
+          `).join("")}
 
         `);
 
