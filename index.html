@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="da">
-
 <head>
   <meta charset="UTF-8">
 
@@ -18,29 +17,27 @@
 
   assets/css/tokens.css
 
-  <link
-    rel="stylesheet"
-    href/css/app.css
+  assets/css/components.css
+
+  assets/css/app.css
 </head>
 
 <body>
-
   <header id="appHeader"></header>
 
   <div class="app-shell">
-
     <aside id="sideNav"></aside>
 
     <main
       id="app"
       aria-live="polite"
     ></main>
-
   </div>
 
-  <nav id="bottomNav"></nav>
-
-  <!-- TrackMan -->
+  <nav
+    id="bottomNav"
+    aria-label="Primær navigation"
+  ></nav>
 
   <input
     id="trackmanFile"
@@ -49,8 +46,6 @@
     hidden
   >
 
-  <!-- Garmin CSV / JSON -->
-
   <input
     id="garminFile"
     type="file"
@@ -58,14 +53,8 @@
     hidden
   >
 
-  <!-- OCR Engine -->
-
-  <script src="https://cdn.jsdelivr.net/npm/5/dist/tesseract.min.jsscript>
-
-  <!-- App -->
+  https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.jsscript>
 
   assets/js/app.jsscript>
-
 </body>
-
 </html>
