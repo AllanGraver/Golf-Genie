@@ -12,51 +12,8 @@ export const DEFAULT_PROFILE = {
   age: 42
 };
 
-export function loadState() {
-
-  try {
-
-    const state = JSON.parse(
-      localStorage.getItem(KEY)
-    );
-
-    const defaultState = defaults();
-
-    return {
-      ...defaultState,
-      ...state,
-
-      profile: {
-        ...DEFAULT_PROFILE,
-        ...(state?.profile || {})
-      },
-
-      courseNotes: {
-        ...(state?.courseNotes || {})
-      }
-    };
-
-  } catch {
-
-    return defaults();
-
-  }
-
-}
-
-export function saveState(state) {
-
-  localStorage.setItem(
-    KEY,
-    JSON.stringify(state)
-  );
-
-}
-
 export function defaults() {
-
   return {
-
     page: "home",
 
     clubs: structuredClone(
@@ -67,6 +24,8 @@ export function defaults() {
 
     clubIndex: 0,
 
+    editRoundId: null,
+
     profile: structuredClone(
       DEFAULT_PROFILE
     ),
@@ -74,17 +33,78 @@ export function defaults() {
     courseNotes: {},
 
     status: null
-
   };
+}
 
+export function loadState() {
+  try {
+    const storedState = JSON.parse(
+      localStorage.getItem(KEY)
+    );
+
+    const defaultState = defaults();
+
+    return {
+      ...defaultState,
+      ...storedState,
+
+      editRoundId: null,
+
+      profile: {
+        ...DEFAULT_PROFILE,
+        ...(storedState?.profile || {})
+      },
+
+      courseNotes: {
+        ...(storedState?.courseNotes || {})
+      },
+
+      rounds: Array.isArray(
+        storedState?.rounds
+      )
+        ? storedState.rounds
+        : [],
+
+      clubs: Array.isArray(
+        storedState?.clubs
+      )
+        ? storedState.clubs
+        : structuredClone(DEMO_CLUBS)
+    };
+  } catch (error) {
+    console.error(
+      "Kunne ikke læse localStorage:",
+      error
+    );
+
+    return defaults();
+  }
+}
+
+export function saveState(state) {
+  try {
+    const stateToSave = {
+      ...state,
+
+      editRoundId: null
+    };
+
+    localStorage.setItem(
+      KEY,
+      JSON.stringify(stateToSave)
+    );
+  } catch (error) {
+    console.error(
+      "Kunne ikke gemme localStorage:",
+      error
+    );
+  }
 }
 
 export function resetState() {
-
   const state = defaults();
 
   saveState(state);
 
   return state;
-
 }
