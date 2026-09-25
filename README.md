@@ -1,6 +1,6 @@
-# Golf Pulse Editable
+# Golf Genie
 
-En statisk og modulopdelt Golf Pulse-app, som kan hostes direkte på GitHub Pages.
+En statisk og modulopdelt Golf Genie-app, som kan hostes direkte på GitHub Pages.
 
 https://allangraver.github.io/Golf-Genie/
 
@@ -83,15 +83,10 @@ Når GitHub Pages er aktiv, vil appen være tilgængelig på:
 https://DIT-BRUGERNAVN.github.io/DIT-REPOSITORY/
 ```
 
-Eksempel:
-
-```text
-https://allangraver.github.io/golf-pulse-editable/
-```
 
 ## Dataopbevaring
 
-Golf Pulse gemmer alle brugerdata lokalt i browseren.
+Golf Genie gemmer alle brugerdata lokalt i browseren.
 
 Data lagres under:
 
