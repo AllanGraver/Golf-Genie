@@ -1,6 +1,7 @@
 # Golf Pulse Editable
 
 En statisk og modulopdelt Golf Pulse-app, som kan hostes direkte på GitHub Pages.
+https://allangraver.github.io/Golf-Genie/
 
 ## Funktioner
 
