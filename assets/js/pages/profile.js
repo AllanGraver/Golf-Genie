@@ -1,14 +1,42 @@
+const DEFAULT_PROFILE = {
+  handicap: 12.7,
+  targetHandicap: 10.0,
+  homeCourse: "",
+  handedness: "Right",
+  age: 42
+};
+
+function escapeAttribute(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 export function profilePage(state) {
-  const profile = state.profile;
+  const profile = {
+    ...DEFAULT_PROFILE,
+    ...(state.profile || {})
+  };
 
   return `
     <div class="page">
+
       <div class="card">
-        <p class="eyebrow">PROFIL</p>
+
+        <p class="eyebrow">
+          PROFIL
+        </p>
 
         <h2 class="card-title">
           Spillerprofil
         </h2>
+
+        <p class="text-muted">
+          Oplysningerne gemmes lokalt i browseren og bruges
+          til at tilpasse Golf Genie.
+        </p>
 
         <label for="hcp">
           Handicap
@@ -45,7 +73,9 @@ export function profilePage(state) {
         <input
           id="course"
           type="text"
-          value="${profile.homeCourse}"
+          autocomplete="organization"
+          placeholder="Eksempelvis Aarhus Golf Club"
+          value="${escapeAttribute(profile.homeCourse)}"
         >
 
         <label for="handedness">
@@ -55,14 +85,22 @@ export function profilePage(state) {
         <select id="handedness">
           <option
             value="Right"
-            ${profile.handedness === "Right" ? "selected" : ""}
+            ${
+              profile.handedness === "Right"
+                ? "selected"
+                : ""
+            }
           >
             Højrehåndet
           </option>
 
           <option
             value="Left"
-            ${profile.handedness === "Left" ? "selected" : ""}
+            ${
+              profile.handedness === "Left"
+                ? "selected"
+                : ""
+            }
           >
             Venstrehåndet
           </option>
@@ -89,7 +127,14 @@ export function profilePage(state) {
         >
           Gem profil
         </button>
+
       </div>
+
+      <div class="status status--info">
+        Profiloplysningerne gemmes kun lokalt på denne enhed.
+        Hvis browserens lokale data slettes, nulstilles profilen.
+      </div>
+
     </div>
   `;
 }
