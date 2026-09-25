@@ -7,14 +7,23 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function sanitizeClassNames(value) {
+  return String(value ?? "")
+    .split(/\s+/)
+    .map((className) =>
+      className.replace(/[^a-zA-Z0-9_-]/g, "")
+    )
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function pageHeader(
   eyebrow,
   title,
   subtitle = ""
 ) {
   return `
-    <div>
-
+    <header class="page-header">
       <p class="eyebrow">
         ${escapeHtml(eyebrow)}
       </p>
@@ -32,8 +41,7 @@ export function pageHeader(
           `
           : ""
       }
-
-    </div>
+    </header>
   `;
 }
 
@@ -42,13 +50,17 @@ export function card(
   dark = false,
   extra = ""
 ) {
+  const classes = [
+    "card",
+    dark ? "card--dark" : "",
+    sanitizeClassNames(extra)
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return `
-    <section
-      class="card ${
-        dark ? "card--dark" : ""
-      } ${extra}"
-    >
-      ${content}
+    <section class="${classes}">
+      ${content ?? ""}
     </section>
   `;
 }
@@ -66,7 +78,6 @@ export function metric(
 
   return `
     <div class="metric">
-
       <div class="metric__label">
         ${escapeHtml(label)}
       </div>
@@ -74,39 +85,32 @@ export function metric(
       <div class="metric__value">
         ${displayValue}
       </div>
-
     </div>
   `;
 }
 
-export function sourceBadge(
-  source
-) {
+export function sourceBadge(source) {
+  const normalizedSource = String(source ?? "")
+    .trim()
+    .toLowerCase();
 
-  const normalized =
-    String(source)
-      .toLowerCase()
-      .replace(/\s+/g, "-");
+  let badgeModifier = "";
 
-  let badgeClass =
-    "badge";
-
-  if (
-    normalized.includes("trackman")
-  ) {
-    badgeClass +=
-      " badge--trackman";
+  if (normalizedSource.includes("trackman")) {
+    badgeModifier = "badge--trackman";
+  } else if (normalizedSource.includes("garmin")) {
+    badgeModifier = "badge--garmin";
   }
 
-  if (
-    normalized.includes("garmin")
-  ) {
-    badgeClass +=
-      " badge--garmin";
-  }
+  const classes = [
+    "badge",
+    badgeModifier
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return `
-    <span class="${badgeClass}">
+    <span class="${classes}">
       ${escapeHtml(source)}
     </span>
   `;
