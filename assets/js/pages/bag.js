@@ -7,15 +7,52 @@ import {
 
 export function bagPage(state) {
 
+  if (!state.clubs?.length) {
+
+    return `
+      <div class="page">
+
+        ${pageHeader(
+          "TRACKMAN",
+          "Min bag",
+          "Ingen TrackMan-data importeret endnu"
+        )}
+
+        ${card(`
+
+          <h2 class="card-title">
+            Importér dine køller
+          </h2>
+
+          <p class="text-muted">
+            Importér en TrackMan CSV-fil for at se
+            carry, totalafstande og spredning.
+          </p>
+
+          <button
+            class="button button--accent button--full"
+            data-page="data"
+          >
+            Gå til Data
+          </button>
+
+        `)}
+
+      </div>
+    `;
+  }
+
   const index = Math.min(
-    state.clubIndex,
+    state.clubIndex || 0,
     state.clubs.length - 1
   );
 
-  const club = state.clubs[index];
+  const club =
+    state.clubs[index];
 
   const delta =
-    club.carry - club.benchmark;
+    Number(club.carry || 0) -
+    Number(club.benchmark || 0);
 
   return `
     <div class="page">
@@ -30,26 +67,33 @@ export function bagPage(state) {
 
         <button
           class="button button--outline"
-          id="previousClub">
+          id="previousClub"
+          type="button"
+        >
           ‹
         </button>
 
         <b>
-          ${index + 1} af ${state.clubs.length}
+          ${index + 1}
+          af
+          ${state.clubs.length}
         </b>
 
         <button
           class="button button--outline"
-          id="nextClub">
+          id="nextClub"
+          type="button"
+        >
           ›
         </button>
 
       </div>
 
       ${card(`
+
         ${sourceBadge("TrackMan")}
 
-        <h2 class="club-card__name">
+        <h2 class="card-title">
           ${club.name}
         </h2>
 
@@ -89,31 +133,39 @@ export function bagPage(state) {
       `, true)}
 
       ${card(`
+
         <h2 class="card-title">
           Alle køller
         </h2>
 
         <div class="scroll-row">
 
-          ${state.clubs.map((x, n) => `
+          ${state.clubs.map((club, n) => `
+
             <button
               class="club-tab ${
                 n === index
                   ? "club-tab--active"
                   : ""
               }"
-              data-club="${n}">
+              data-club="${n}"
+              type="button"
+            >
 
-              <b>${x.name}</b>
+              <b>
+                ${club.name}
+              </b>
 
               <br>
 
-              ${x.carry} m
+              ${club.carry} m
 
             </button>
+
           `).join("")}
 
         </div>
+
       `)}
 
     </div>
