@@ -19,7 +19,6 @@ export function bagPage(state) {
         )}
 
         ${card(`
-
           <h2 class="card-title">
             Importér dine køller
           </h2>
@@ -32,10 +31,10 @@ export function bagPage(state) {
           <button
             class="button button--accent button--full"
             data-page="data"
+            type="button"
           >
             Gå til Data
           </button>
-
         `)}
 
       </div>
@@ -47,8 +46,7 @@ export function bagPage(state) {
     state.clubs.length - 1
   );
 
-  const club =
-    state.clubs[index];
+  const club = state.clubs[index];
 
   const delta =
     Number(club.carry || 0) -
@@ -74,9 +72,7 @@ export function bagPage(state) {
         </button>
 
         <b>
-          ${index + 1}
-          af
-          ${state.clubs.length}
+          ${index + 1} af ${state.clubs.length}
         </b>
 
         <button
@@ -90,7 +86,6 @@ export function bagPage(state) {
       </div>
 
       ${card(`
-
         ${sourceBadge("TrackMan")}
 
         <h2 class="card-title">
@@ -133,36 +128,35 @@ export function bagPage(state) {
       `, true)}
 
       ${card(`
-
         <h2 class="card-title">
           Alle køller
         </h2>
 
         <div class="scroll-row">
 
-          ${state.clubs.map((club, n) => `
+          ${state.clubs
+            .map(
+              (club, n) => `
+                <button
+                  class="club-tab ${
+                    n === index
+                      ? "club-tab--active"
+                      : ""
+                  }"
+                  data-club="${n}"
+                  type="button"
+                >
 
-            <button
-              class="club-tab ${
-                n === index
-                  ? "club-tab--active"
-                  : ""
-              }"
-              data-club="${n}"
-              type="button"
-            >
+                  <b>${club.name}</b>
 
-              <b>
-                ${club.name}
-              </b>
+                  <br>
 
-              <br>
+                  ${club.carry} m
 
-              ${club.carry} m
-
-            </button>
-
-          `).join("")}
+                </button>
+              `
+            )
+            .join("")}
 
         </div>
 
