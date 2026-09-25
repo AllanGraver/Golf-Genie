@@ -1,9 +1,5 @@
 const number = (value) => {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
@@ -13,15 +9,11 @@ const number = (value) => {
       .replace(",", ".")
   );
 
-  return Number.isFinite(parsed)
-    ? parsed
-    : null;
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const text = (value, fallback = "") => {
-  const normalized =
-    String(value ?? "").trim();
-
+  const normalized = String(value ?? "").trim();
   return normalized || fallback;
 };
 
@@ -33,11 +25,9 @@ const key = (value) =>
     .replace(/[^a-z0-9]/g, "");
 
 const field = (row, names) => {
-  const match =
-    Object.entries(row || {}).find(
-      ([name]) =>
-        names.includes(key(name))
-    );
+  const match = Object.entries(row || {}).find(
+    ([name]) => names.includes(key(name))
+  );
 
   return match?.[1];
 };
@@ -51,15 +41,11 @@ const median = (values) => {
     return null;
   }
 
-  const middle =
-    Math.floor(data.length / 2);
+  const middle = Math.floor(data.length / 2);
 
   return data.length % 2
     ? data[middle]
-    : (
-        data[middle - 1] +
-        data[middle]
-      ) / 2;
+    : (data[middle - 1] + data[middle]) / 2;
 };
 
 function parseArray(value) {
@@ -69,11 +55,7 @@ function parseArray(value) {
       .filter(Number.isFinite);
   }
 
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+  if (value === null || value === undefined || value === "") {
     return [];
   }
 
@@ -86,7 +68,7 @@ function parseArray(value) {
         .filter(Number.isFinite);
     }
   } catch {
-    // Fortsæt med tekstbaseret parsing.
+    // Continue with separated text values.
   }
 
   return String(value)
@@ -102,24 +84,19 @@ function normalizeDate(value) {
     return "";
   }
 
-  const isoMatch = raw.match(
-    /^\d{4}-\d{2}-\d{2}/
-  );
+  const isoMatch = raw.match(/^\d{4}-\d{2}-\d{2}/);
 
   if (isoMatch) {
     return isoMatch[0];
   }
 
   const numericMatch = raw.match(
-    /^(\d{1,2})\d{1,2}\d{4}$/
+    /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/
   );
 
   if (numericMatch) {
-    const day =
-      numericMatch[1].padStart(2, "0");
-
-    const month =
-      numericMatch[2].padStart(2, "0");
+    const day = numericMatch[1].padStart(2, "0");
+    const month = numericMatch[2].padStart(2, "0");
 
     return `${numericMatch[3]}-${month}-${day}`;
   }
@@ -140,17 +117,77 @@ function slug(value) {
     .replace(/^-|-$/g, "");
 }
 
+function calculatePercentage(made, possible) {
+  if (
+    !Number.isFinite(made) ||
+    !Number.isFinite(possible) ||
+    possible <= 0
+  ) {
+    return null;
+  }
+
+  return Number(((made / possible) * 100).toFixed(1));
+}
+
+function calculateScoringCategories(holes, holePars) {
+  const result = {
+    eaglesOrBetter: 0,
+    birdies: 0,
+    pars: 0,
+    bogeys: 0,
+    doubleBogeyPlus: 0,
+    completedHoles: 0
+  };
+
+  for (let index = 0; index < 18; index += 1) {
+    const score = Number(holes[index]);
+    const par = Number(holePars[index]);
+
+    if (!Number.isFinite(score) || !Number.isFinite(par)) {
+      continue;
+    }
+
+    result.completedHoles += 1;
+    const difference = score - par;
+
+    if (difference <= -2) {
+      result.eaglesOrBetter += 1;
+    } else if (difference === -1) {
+      result.birdies += 1;
+    } else if (difference === 0) {
+      result.pars += 1;
+    } else if (difference === 1) {
+      result.bogeys += 1;
+    } else {
+      result.doubleBogeyPlus += 1;
+    }
+  }
+
+  return result;
+}
+
+function sumComplete(values, expectedLength) {
+  if (!Array.isArray(values) || values.length !== expectedLength) {
+    return null;
+  }
+
+  const valid = values.map(Number);
+
+  if (!valid.every(Number.isFinite)) {
+    return null;
+  }
+
+  return valid.reduce((sum, value) => sum + value, 0);
+}
+
 function createRoundId(round, index) {
   const existingId = text(
-    field(
-      round,
-      [
-        "id",
-        "scorecardid",
-        "scorecardpk",
-        "roundid"
-      ]
-    )
+    field(round, [
+      "id",
+      "scorecardid",
+      "scorecardpk",
+      "roundid"
+    ])
   );
 
   if (existingId) {
@@ -158,38 +195,21 @@ function createRoundId(round, index) {
   }
 
   const course = text(
-    field(
-      round,
-      [
-        "course",
-        "coursename",
-        "banename"
-      ]
-    ),
+    field(round, ["course", "coursename", "banename"]),
     "unknown-course"
   );
 
   const date = normalizeDate(
-    field(
-      round,
-      [
-        "date",
-        "rounddate",
-        "starttime",
-        "formattedstarttime"
-      ]
-    )
+    field(round, [
+      "date",
+      "rounddate",
+      "starttime",
+      "formattedstarttime"
+    ])
   );
 
   const score = number(
-    field(
-      round,
-      [
-        "score",
-        "totalscore",
-        "strokes"
-      ]
-    )
+    field(round, ["score", "totalscore", "strokes"])
   );
 
   return [
@@ -211,109 +231,64 @@ export function parseCsv(csvText) {
     );
   }
 
-  const semicolonCount =
-    (lines[0].match(/;/g) || []).length;
-
-  const commaCount =
-    (lines[0].match(/,/g) || []).length;
-
-  const separator =
-    semicolonCount > commaCount
-      ? ";"
-      : ",";
+  const semicolonCount = (lines[0].match(/;/g) || []).length;
+  const commaCount = (lines[0].match(/,/g) || []).length;
+  const separator = semicolonCount > commaCount ? ";" : ",";
 
   const splitLine = (line) => {
     const output = [];
-
     let currentValue = "";
     let quoted = false;
 
-    for (
-      let index = 0;
-      index < line.length;
-      index += 1
-    ) {
-      const character =
-        line[index];
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
 
-      if (
-        character === '"' &&
-        line[index + 1] === '"'
-      ) {
+      if (character === '"' && line[index + 1] === '"') {
         currentValue += '"';
         index += 1;
       } else if (character === '"') {
         quoted = !quoted;
-      } else if (
-        character === separator &&
-        !quoted
-      ) {
-        output.push(
-          currentValue.trim()
-        );
-
+      } else if (character === separator && !quoted) {
+        output.push(currentValue.trim());
         currentValue = "";
       } else {
         currentValue += character;
       }
     }
 
-    output.push(
-      currentValue.trim()
-    );
-
+    output.push(currentValue.trim());
     return output;
   };
 
-  const headers =
-    splitLine(lines[0]);
+  const headers = splitLine(lines[0]);
 
-  return lines
-    .slice(1)
-    .map((line) => {
-      const values =
-        splitLine(line);
+  return lines.slice(1).map((line) => {
+    const values = splitLine(line);
 
-      return Object.fromEntries(
-        headers.map(
-          (header, index) => [
-            header,
-            values[index] ?? ""
-          ]
-        )
-      );
-    });
+    return Object.fromEntries(
+      headers.map((header, index) => [
+        header,
+        values[index] ?? ""
+      ])
+    );
+  });
 }
 
-export function importTrackman(
-  rows,
-  existing = []
-) {
+export function importTrackman(rows, existing = []) {
   const groups = {};
 
   rows.forEach((row) => {
     const name = text(
-      field(
-        row,
-        [
-          "club",
-          "clubname",
-          "clubtype",
-          "kolle"
-        ]
-      )
+      field(row, ["club", "clubname", "clubtype", "kolle"])
     );
 
     const carry = number(
-      field(
-        row,
-        [
-          "carry",
-          "carrydistance",
-          "carrymeters",
-          "carrymetres"
-        ]
-      )
+      field(row, [
+        "carry",
+        "carrydistance",
+        "carrymeters",
+        "carrymetres"
+      ])
     );
 
     if (!name || carry === null) {
@@ -326,91 +301,59 @@ export function importTrackman(
 
     groups[name].push({
       carry,
-
       total: number(
-        field(
-          row,
-          [
-            "total",
-            "totaldistance",
-            "totalmeters",
-            "totalmetres"
-          ]
-        )
+        field(row, [
+          "total",
+          "totaldistance",
+          "totalmeters",
+          "totalmetres"
+        ])
       ),
-
       side: number(
-        field(
-          row,
-          [
-            "side",
-            "sideoffline",
-            "offline",
-            "lateral"
-          ]
-        )
+        field(row, [
+          "side",
+          "sideoffline",
+          "offline",
+          "lateral"
+        ])
       )
     });
   });
 
-  const clubs =
-    Object.entries(groups)
-      .map(([name, shots]) => {
-        const carry = Math.round(
-          median(
-            shots.map(
-              (shot) => shot.carry
-            )
-          )
-        );
-
-        const oldClub =
-          existing.find(
-            (club) =>
-              key(club.name) === key(name)
-          );
-
-        const totalMedian =
-          median(
-            shots.map(
-              (shot) => shot.total
-            )
-          );
-
-        const dispersionMedian =
-          median(
-            shots.map(
-              (shot) =>
-                Number.isFinite(shot.side)
-                  ? Math.abs(shot.side)
-                  : null
-            )
-          );
-
-        return {
-          name,
-
-          carry,
-
-          total: Math.round(
-            totalMedian ?? carry
-          ),
-
-          dispersion: Math.round(
-            dispersionMedian ?? 0
-          ),
-
-          shots: shots.length,
-
-          benchmark:
-            oldClub?.benchmark ??
-            Math.round(carry * 0.96)
-        };
-      })
-      .sort(
-        (a, b) =>
-          b.carry - a.carry
+  const clubs = Object.entries(groups)
+    .map(([name, shots]) => {
+      const carry = Math.round(
+        median(shots.map((shot) => shot.carry))
       );
+
+      const oldClub = existing.find(
+        (club) => key(club.name) === key(name)
+      );
+
+      const totalMedian = median(
+        shots.map((shot) => shot.total)
+      );
+
+      const dispersionMedian = median(
+        shots.map((shot) =>
+          Number.isFinite(shot.side)
+            ? Math.abs(shot.side)
+            : null
+        )
+      );
+
+      return {
+        name,
+        carry,
+        total: Math.round(totalMedian ?? carry),
+        dispersion: Math.round(dispersionMedian ?? 0),
+        shots: shots.length,
+        benchmark:
+          oldClub?.benchmark ??
+          Math.round(carry * 0.96)
+      };
+    })
+    .sort((a, b) => b.carry - a.carry);
 
   if (!clubs.length) {
     throw new Error(
@@ -422,13 +365,12 @@ export function importTrackman(
 }
 
 export function importGarmin(data) {
-  const source =
-    Array.isArray(data)
-      ? data
-      : data?.rounds ||
-        data?.scorecards ||
-        data?.scorecardSummaries ||
-        [];
+  const source = Array.isArray(data)
+    ? data
+    : data?.rounds ||
+      data?.scorecards ||
+      data?.scorecardSummaries ||
+      [];
 
   if (!Array.isArray(source)) {
     throw new Error(
@@ -439,286 +381,261 @@ export function importGarmin(data) {
   const rounds = source
     .map((row, index) => {
       const course = text(
-        field(
-          row,
-          [
-            "course",
-            "coursename",
-            "banename"
-          ]
-        ),
+        field(row, ["course", "coursename", "banename"]),
         "Ukendt bane"
       );
 
       const date = normalizeDate(
-        field(
-          row,
-          [
-            "date",
-            "rounddate",
-            "starttime",
-            "formattedstarttime"
-          ]
-        )
+        field(row, [
+          "date",
+          "rounddate",
+          "starttime",
+          "formattedstarttime"
+        ])
       );
 
-      const score = number(
-        field(
-          row,
-          [
-            "score",
-            "totalscore",
-            "strokes"
-          ]
-        )
+      const holes = parseArray(
+        field(row, [
+          "holes",
+          "holescores",
+          "scorebyhole",
+          "holeslag",
+          "strokesbyhole"
+        ])
       );
+
+      const holePars = parseArray(
+        field(row, [
+          "holepars",
+          "parsbyhole",
+          "parbyhole",
+          "hulpar"
+        ])
+      );
+
+      const holeHandicapStrokes = parseArray(
+        field(row, [
+          "holehandicapstrokes",
+          "handicapstrokesbyhole",
+          "hcpstrokesbyhole",
+          "extrastrikesbyhole",
+          "handicapslag"
+        ])
+      );
+
+      const importedScore = number(
+        field(row, ["score", "totalscore", "strokes"])
+      );
+
+      const calculatedScore = sumComplete(holes, 18);
+      const calculatedPar = sumComplete(holePars, 18);
+
+      const score = calculatedScore ?? importedScore;
+
+      const importedRelativeToPar = number(
+        field(row, [
+          "relativetopar",
+          "topar",
+          "overpar",
+          "scoretopar"
+        ])
+      );
+
+      const relativeToPar =
+        Number.isFinite(calculatedScore) &&
+        Number.isFinite(calculatedPar)
+          ? calculatedScore - calculatedPar
+          : importedRelativeToPar;
+
+      const firMade = number(
+        field(row, [
+          "firmade",
+          "fairwayshit",
+          "fairwaysmade"
+        ])
+      );
+
+      const firPossible = number(
+        field(row, [
+          "firpossible",
+          "fairwayspossible",
+          "fairwayattempts"
+        ])
+      );
+
+      const girMade = number(
+        field(row, [
+          "girmade",
+          "greensinregulation",
+          "greenshit"
+        ])
+      );
+
+      const girPossible = number(
+        field(row, [
+          "girpossible",
+          "greenspossible",
+          "greensinregulationpossible"
+        ])
+      );
+
+      const scoring = calculateScoringCategories(
+        holes,
+        holePars
+      );
+
+      const importedFrontNine = number(
+        field(row, [
+          "frontnine",
+          "front9",
+          "out",
+          "firstnine"
+        ])
+      );
+
+      const importedBackNine = number(
+        field(row, [
+          "backnine",
+          "back9",
+          "in",
+          "secondnine"
+        ])
+      );
+
+      const frontNine =
+        holes.length === 18
+          ? holes
+              .slice(0, 9)
+              .reduce((sum, value) => sum + value, 0)
+          : importedFrontNine;
+
+      const backNine =
+        holes.length === 18
+          ? holes
+              .slice(9, 18)
+              .reduce((sum, value) => sum + value, 0)
+          : importedBackNine;
 
       return {
-        id: createRoundId(
-          row,
-          index
-        ),
-
+        id: createRoundId(row, index),
         course,
-
         tees: text(
-          field(
-            row,
-            [
-              "tees",
-              "tee",
-              "teename",
-              "teebox",
-              "teested"
-            ]
-          )
+          field(row, [
+            "tees",
+            "tee",
+            "teename",
+            "teebox",
+            "teested"
+          ])
         ),
-
         date,
-
         score,
-
-        relativeToPar: number(
-          field(
-            row,
-            [
-              "relativetopar",
-              "topar",
-              "overpar",
-              "scoretopar"
-            ]
-          )
-        ),
-
+        relativeToPar,
         points: number(
-          field(
-            row,
-            [
-              "points",
-              "stableford",
-              "stablefordscore"
-            ]
-          )
+          field(row, [
+            "points",
+            "stableford",
+            "stablefordscore"
+          ])
         ),
-
-        fir: number(
-          field(
-            row,
-            [
+        firMade,
+        firPossible,
+        fir:
+          calculatePercentage(firMade, firPossible) ??
+          number(
+            field(row, [
               "fir",
               "fairwaypercentage",
               "fairwayspercentage"
-            ]
-          )
-        ),
-
-        firMade: number(
-          field(
-            row,
-            [
-              "firmade",
-              "fairwayshit",
-              "fairwaysmade"
-            ]
-          )
-        ),
-
-        firPossible: number(
-          field(
-            row,
-            [
-              "firpossible",
-              "fairwayspossible",
-              "fairwayattempts"
-            ]
-          )
-        ),
-
-        gir: number(
-          field(
-            row,
-            [
+            ])
+          ),
+        girMade,
+        girPossible,
+        gir:
+          calculatePercentage(girMade, girPossible) ??
+          number(
+            field(row, [
               "gir",
               "girpercentage",
               "greensinregulationpercentage"
-            ]
-          )
-        ),
-
-        girMade: number(
-          field(
-            row,
-            [
-              "girmade",
-              "greensinregulation",
-              "greenshit"
-            ]
-          )
-        ),
-
-        girPossible: number(
-          field(
-            row,
-            [
-              "girpossible",
-              "greenspossible",
-              "greensinregulationpossible"
-            ]
-          )
-        ),
-
-        putts: number(
-          field(
-            row,
-            [
-              "putts",
-              "totalputts"
-            ]
-          )
-        ),
-
-        upAndDown: number(
-          field(
-            row,
-            [
-              "upanddown",
-              "upanddownpercentage",
-              "opogned"
-            ]
-          )
-        ),
-
-        upAndDownMade: number(
-          field(
-            row,
-            [
-              "upanddownmade",
-              "upanddownsuccessful"
-            ]
-          )
-        ),
-
-        upAndDownPossible: number(
-          field(
-            row,
-            [
-              "upanddownpossible",
-              "upanddownattempts"
-            ]
-          )
-        ),
-
-        pars: number(
-          field(
-            row,
-            [
-              "pars",
-              "parcount"
-            ]
-          )
-        ),
-
-        bogeys: number(
-          field(
-            row,
-            [
-              "bogeys",
-              "bogeycount"
-            ]
-          )
-        ),
-
-        doubleBogeyPlus: number(
-          field(
-            row,
-            [
-              "doublebogeyplus",
-              "doublebogeys",
-              "doublebogeyorworse"
-            ]
-          )
-        ),
-
-        frontNine: number(
-          field(
-            row,
-            [
-              "frontnine",
-              "front9",
-              "out",
-              "firstnine"
-            ]
-          )
-        ),
-
-        backNine: number(
-          field(
-            row,
-            [
-              "backnine",
-              "back9",
-              "in",
-              "secondnine"
-            ]
-          )
-        ),
-
-        holes: parseArray(
-          field(
-            row,
-            [
-              "holes",
-              "holescores",
-              "scorebyhole"
-            ]
-          )
-        ),
-
-        source: text(
-          field(
-            row,
-            [
-              "source"
-            ]
+            ])
           ),
+        putts: number(
+          field(row, ["putts", "totalputts"])
+        ),
+        upAndDown: number(
+          field(row, [
+            "upanddown",
+            "upanddownpercentage",
+            "opogned"
+          ])
+        ),
+        upAndDownMade: number(
+          field(row, [
+            "upanddownmade",
+            "upanddownsuccessful"
+          ])
+        ),
+        upAndDownPossible: number(
+          field(row, [
+            "upanddownpossible",
+            "upanddownattempts"
+          ])
+        ),
+        eaglesOrBetter:
+          scoring.completedHoles
+            ? scoring.eaglesOrBetter
+            : number(
+                field(row, [
+                  "eaglesorbetter",
+                  "eagles"
+                ])
+              ),
+        birdies:
+          scoring.completedHoles
+            ? scoring.birdies
+            : number(
+                field(row, ["birdies", "birdiecount"])
+              ),
+        pars:
+          scoring.completedHoles
+            ? scoring.pars
+            : number(
+                field(row, ["pars", "parcount"])
+              ),
+        bogeys:
+          scoring.completedHoles
+            ? scoring.bogeys
+            : number(
+                field(row, ["bogeys", "bogeycount"])
+              ),
+        doubleBogeyPlus:
+          scoring.completedHoles
+            ? scoring.doubleBogeyPlus
+            : number(
+                field(row, [
+                  "doublebogeyplus",
+                  "doublebogeys",
+                  "doublebogeyorworse"
+                ])
+              ),
+        completedHoles: scoring.completedHoles,
+        frontNine,
+        backNine,
+        holes,
+        holePars,
+        holeHandicapStrokes,
+        source: text(
+          field(row, ["source"]),
           "Garmin-fil"
         ),
-
         importedAt: text(
-          field(
-            row,
-            [
-              "importedat"
-            ]
-          ),
+          field(row, ["importedat"]),
           new Date().toISOString()
         )
       };
     })
-    .filter(
-      (round) =>
-        round.score !== null
-    );
+    .filter((round) => round.score !== null);
 
   if (!rounds.length) {
     throw new Error(
