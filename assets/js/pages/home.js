@@ -40,7 +40,11 @@ export function homePage(state) {
           ${PERFORMANCE.map(x =>
             metric(
               x.name,
-              `<span class="${x.value < 0 ? "danger" : "accent"}">
+              `<span class="${
+                x.value < 0
+                  ? "danger"
+                  : "accent"
+              }">
                 ${x.value > 0 ? "+" : ""}
                 ${String(x.value).replace(".", ",")}
               </span>`
@@ -48,6 +52,7 @@ export function homePage(state) {
           ).join("")}
 
         </div>
+
       `, true)}
 
       ${card(`
@@ -67,14 +72,18 @@ export function homePage(state) {
         <button
           class="button button--accent button--full"
           data-page="training">
+
           Start træning
+
         </button>
+
       `, true)}
 
       ${card(`
         <div class="row">
 
           <div>
+
             <p class="eyebrow">
               SENESTE RUNDE
             </p>
@@ -86,9 +95,11 @@ export function homePage(state) {
             <p class="text-muted">
               ${r.date}
             </p>
+
           </div>
 
           <div class="round-card__score">
+
             ${r.score}
 
             <small
@@ -97,19 +108,30 @@ export function homePage(state) {
               ${r.points ?? "–"} point
 
             </small>
+
           </div>
 
         </div>
 
         <div class="metric-grid metric-grid--3">
 
-          ${metric("FIR", `${r.fir ?? "–"}%`)}
+          ${metric(
+            "FIR",
+            `${r.fir ?? "–"}%`
+          )}
 
-          ${metric("GIR", `${r.gir ?? "–"}%`)}
+          ${metric(
+            "GIR",
+            `${r.gir ?? "–"}%`
+          )}
 
-          ${metric("Putts", r.putts ?? "–")}
+          ${metric(
+            "Putts",
+            r.putts ?? "–"
+          )}
 
         </div>
+
       `)}
 
     </div>
