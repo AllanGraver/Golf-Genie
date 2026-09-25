@@ -41,12 +41,18 @@ const pages = {
 
 function renderHeader() {
   byId("appHeader").innerHTML = `
-    <button class="brand" data-page="home">
+    <button
+      class="brand"
+      data-page="home"
+      type="button"
+    >
       <span class="brand__logo">⚑</span>
+
       <span>
         <span class="brand__name">
           GOLF<span>Genie</span>
         </span>
+
         <span class="brand__tagline">
           EDITABLE HUB
         </span>
@@ -67,6 +73,7 @@ function renderNav() {
             : ""
         }"
         data-page="${page}"
+        type="button"
       >
         <span class="nav-button__icon">
           ${icon}
@@ -86,6 +93,7 @@ function renderNav() {
             : ""
         }"
         data-page="${page}"
+        type="button"
       >
         ${icon} ${label}
       </button>
@@ -93,21 +101,23 @@ function renderNav() {
   ).join("");
 }
 
-function bind() {
-
+function bindNavigation() {
   document
     .querySelectorAll("[data-page]")
-    .forEach(button => {
+    .forEach((button) => {
       button.onclick = () => {
         state.page = button.dataset.page;
+
         saveState(state);
         render();
       };
     });
+}
 
+function bindClubSelection() {
   document
     .querySelectorAll("[data-club]")
-    .forEach(button => {
+    .forEach((button) => {
       button.onclick = () => {
         state.clubIndex = Number(
           button.dataset.club
@@ -118,8 +128,11 @@ function bind() {
       };
     });
 
-  if (byId("previousClub")) {
-    byId("previousClub").onclick = () => {
+  const previousClubButton =
+    byId("previousClub");
+
+  if (previousClubButton) {
+    previousClubButton.onclick = () => {
       state.clubIndex = Math.max(
         0,
         state.clubIndex - 1
@@ -130,8 +143,11 @@ function bind() {
     };
   }
 
-  if (byId("nextClub")) {
-    byId("nextClub").onclick = () => {
+  const nextClubButton =
+    byId("nextClub");
+
+  if (nextClubButton) {
+    nextClubButton.onclick = () => {
       state.clubIndex = Math.min(
         state.clubs.length - 1,
         state.clubIndex + 1
@@ -141,159 +157,304 @@ function bind() {
       render();
     };
   }
+}
 
-  if (byId("trackmanButton")) {
-    byId("trackmanButton").onclick = () =>
-      byId("trackmanFile").click();
-  }
+function bindImportButtons() {
+  const trackmanButton =
+    byId("trackmanButton");
 
-  if (byId("garminButton")) {
-    byId("garminButton").onclick = () =>
-      byId("garminFile").click();
-  }
-
-  if (byId("resetButton")) {
-    byId("resetButton").onclick = () => {
-
-      state = resetState();
-
-      state.status = {
-        type: "success",
-        text: "Demodata er gendannet."
-      };
-
-      render();
+  if (trackmanButton) {
+    trackmanButton.onclick = () => {
+      byId("trackmanFile")?.click();
     };
   }
 
-  if (byId("save-profile")) {
-    byId("save-profile").onclick = () => {
+  const garminButton =
+    byId("garminButton");
 
-      state.profile = {
-        handicap: Number(
-          byId("hcp").value
-        ),
+  if (garminButton) {
+    garminButton.onclick = () => {
+      byId("garminFile")?.click();
+    };
+  }
+}
 
-        targetHandicap: Number(
-          byId("target").value
-        ),
+function bindResetButton() {
+  const resetButton =
+    byId("resetButton");
 
-        homeCourse:
-          byId("course").value,
+  if (!resetButton) {
+    return;
+  }
 
-        handedness:
-          byId("handedness").value,
+  resetButton.onclick = () => {
+    state = resetState();
 
-        age: Number(
-          byId("age").value
-        )
-      };
+    state.status = {
+      type: "success",
+      text: "Demodata er gendannet."
+    };
 
-      saveState(state);
+    saveState(state);
+    render();
+  };
+}
 
+function bindProfileForm() {
+  const saveProfileButton =
+    byId("save-profile");
+
+  if (!saveProfileButton) {
+    return;
+  }
+
+  saveProfileButton.onclick = () => {
+    const handicap =
+      Number(byId("hcp")?.value);
+
+    const targetHandicap =
+      Number(byId("target")?.value);
+
+    const homeCourse =
+      byId("course")?.value.trim() || "";
+
+    const handedness =
+      byId("handedness")?.value || "Right";
+
+    const age =
+      Number(byId("age")?.value);
+
+    if (
+      !Number.isFinite(handicap) ||
+      handicap < -10 ||
+      handicap > 54
+    ) {
       state.status = {
-        type: "success",
-        text: "Profil gemt."
+        type: "error",
+        text: "Indtast et gyldigt handicap mellem -10 og 54."
       };
 
       render();
-    };
-  }
+      return;
+    }
 
+    if (
+      !Number.isFinite(targetHandicap) ||
+      targetHandicap < -10 ||
+      targetHandicap > 54
+    ) {
+      state.status = {
+        type: "error",
+        text: "Indtast et gyldigt målhandicap mellem -10 og 54."
+      };
+
+      render();
+      return;
+    }
+
+    if (
+      !Number.isInteger(age) ||
+      age < 1 ||
+      age > 120
+    ) {
+      state.status = {
+        type: "error",
+        text: "Indtast en gyldig alder mellem 1 og 120."
+      };
+
+      render();
+      return;
+    }
+
+    state.profile = {
+      handicap,
+      targetHandicap,
+      homeCourse,
+      handedness,
+      age
+    };
+
+    state.status = {
+      type: "success",
+      text: "Profilen er gemt."
+    };
+
+    saveState(state);
+    render();
+  };
+}
+
+function bindCourseNotes() {
   document
-    .querySelectorAll(".drill")
-    .forEach(button => {
-      button.onclick = () =>
-        button.classList.toggle(
-          "button--accent"
-        );
+    .querySelectorAll(".save-course-note")
+    .forEach((button) => {
+      button.onclick = () => {
+        const course =
+          button.dataset.course;
+
+        if (!course) {
+          return;
+        }
+
+        const noteField =
+          document.querySelector(
+            `.course-note[data-course="${CSS.escape(course)}"]`
+          );
+
+        if (!noteField) {
+          return;
+        }
+
+        if (!state.courseNotes) {
+          state.courseNotes = {};
+        }
+
+        const note =
+          noteField.value.trim();
+
+        if (note) {
+          state.courseNotes[course] = note;
+        } else {
+          delete state.courseNotes[course];
+        }
+
+        state.status = {
+          type: "success",
+          text: `Banenoten til ${course} er gemt.`
+        };
+
+        saveState(state);
+        render();
+      };
     });
 }
 
+function bindTrainingDrills() {
+  document
+    .querySelectorAll(".drill")
+    .forEach((button) => {
+      button.onclick = () => {
+        button.classList.toggle(
+          "button--accent"
+        );
+      };
+    });
+}
+
+function bind() {
+  bindNavigation();
+  bindClubSelection();
+  bindImportButtons();
+  bindResetButton();
+  bindProfileForm();
+  bindCourseNotes();
+  bindTrainingDrills();
+}
+
 function render() {
-
   renderHeader();
-
   renderNav();
 
+  const pageRenderer =
+    pages[state.page] || homePage;
+
   byId("app").innerHTML =
-    (pages[state.page] || homePage)(state);
+    pageRenderer(state);
 
   bind();
 }
 
-byId("trackmanFile").onchange =
-  async (event) => {
+const trackmanFileInput =
+  byId("trackmanFile");
 
-    try {
+if (trackmanFileInput) {
+  trackmanFileInput.onchange =
+    async (event) => {
+      try {
+        const file =
+          event.target.files?.[0];
 
-      const file =
-        event.target.files[0];
+        if (!file) {
+          return;
+        }
 
-      state.clubs = importTrackman(
-        parseCsv(
-          await file.text()
-        ),
-        state.clubs
-      );
+        const fileContent =
+          await file.text();
 
-      state.clubIndex = 0;
+        state.clubs = importTrackman(
+          parseCsv(fileContent),
+          state.clubs
+        );
 
-      state.status = {
-        type: "success",
-        text: `${state.clubs.length} køller importeret.`
-      };
+        state.clubIndex = 0;
 
-    } catch (error) {
+        state.status = {
+          type: "success",
+          text: `${state.clubs.length} køller importeret.`
+        };
+      } catch (error) {
+        state.status = {
+          type: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "TrackMan-filen kunne ikke importeres."
+        };
+      }
 
-      state.status = {
-        type: "error",
-        text: error.message
-      };
+      event.target.value = "";
 
-    }
+      saveState(state);
+      render();
+    };
+}
 
-    saveState(state);
-    render();
-  };
+const garminFileInput =
+  byId("garminFile");
 
-byId("garminFile").onchange =
-  async (event) => {
+if (garminFileInput) {
+  garminFileInput.onchange =
+    async (event) => {
+      try {
+        const file =
+          event.target.files?.[0];
 
-    try {
+        if (!file) {
+          return;
+        }
 
-      const file =
-        event.target.files[0];
+        const text =
+          await file.text();
 
-      const text =
-        await file.text();
+        const raw =
+          file.name
+            .toLowerCase()
+            .endsWith(".json")
+            ? JSON.parse(text)
+            : parseCsv(text);
 
-      const raw =
-        file.name
-          .toLowerCase()
-          .endsWith(".json")
-          ? JSON.parse(text)
-          : parseCsv(text);
+        state.rounds =
+          importGarmin(raw);
 
-      state.rounds =
-        importGarmin(raw);
+        state.status = {
+          type: "success",
+          text: `${state.rounds.length} runder importeret.`
+        };
+      } catch (error) {
+        state.status = {
+          type: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Garmin-filen kunne ikke importeres."
+        };
+      }
 
-      state.status = {
-        type: "success",
-        text: `${state.rounds.length} runder importeret.`
-      };
+      event.target.value = "";
 
-    } catch (error) {
-
-      state.status = {
-        type: "error",
-        text: error.message
-      };
-
-    }
-
-    saveState(state);
-    render();
-  };
+      saveState(state);
+      render();
+    };
+}
 
 render();
