@@ -26,25 +26,22 @@ export function homePage(state) {
     targetHandicap: 10
   };
 
-  const rounds =
-    Array.isArray(state.rounds)
-      ? state.rounds
-      : [];
+  const rounds = Array.isArray(state.rounds)
+    ? state.rounds
+    : [];
 
   const roundCount = rounds.length;
 
-  const latestRound =
-    roundCount
-      ? rounds
-          .slice()
-          .sort(
-            (a, b) =>
-              String(b.date || "")
-                .localeCompare(
-                  String(a.date || "")
-                )
-          )[0]
-      : null;
+  const latestRound = roundCount
+    ? rounds
+        .slice()
+        .sort(
+          (a, b) =>
+            String(b.date || "").localeCompare(
+              String(a.date || "")
+            )
+        )[0]
+    : null;
 
   const uniqueCourses =
     new Set(
@@ -54,33 +51,21 @@ export function homePage(state) {
       )
     ).size;
 
-  const averageScore =
-    average(
-      rounds.map(
-        (round) => round.score
-      )
-    );
+  const averageScore = average(
+    rounds.map((round) => round.score)
+  );
 
-  const averageFir =
-    average(
-      rounds.map(
-        (round) => round.fir
-      )
-    );
+  const averageFir = average(
+    rounds.map((round) => round.fir)
+  );
 
-  const averageGir =
-    average(
-      rounds.map(
-        (round) => round.gir
-      )
-    );
+  const averageGir = average(
+    rounds.map((round) => round.gir)
+  );
 
-  const averagePutts =
-    average(
-      rounds.map(
-        (round) => round.putts
-      )
-    );
+  const averagePutts = average(
+    rounds.map((round) => round.putts)
+  );
 
   return `
     <div class="page">
@@ -89,7 +74,6 @@ export function homePage(state) {
         <div class="row">
 
           <div>
-
             <p class="eyebrow">
               DIN PROFIL
             </p>
@@ -99,7 +83,6 @@ export function homePage(state) {
                 profile.handicap
               ).replace(".", ",")}
             </div>
-
           </div>
 
           ${metric(
@@ -122,9 +105,9 @@ export function homePage(state) {
         </h2>
 
         <p class="text-muted">
-          Importér Garmin Golf scorekort,
-          gennemgå statistik og opbyg
-          en historik over dine runder.
+          Importér Garmin Golf-scorekort,
+          gennemgå statistik og opbyg din
+          personlige banehistorik.
         </p>
       `)}
 
@@ -160,7 +143,6 @@ export function homePage(state) {
           )}
 
         </div>
-
       `)}
 
       ${card(`
@@ -218,18 +200,11 @@ export function homePage(state) {
                   ${latestRound.score ?? "–"}
 
                   <small>
-
                     ${
-                      latestRound.relativeToPar !== null &&
-                      latestRound.relativeToPar !== undefined
-                        ? `${
-                            latestRound.relativeToPar > 0
-                              ? "+"
-                              : ""
-                          }${latestRound.relativeToPar}`
+                      latestRound.relativeToPar != null
+                        ? `${latestRound.relativeToPar > 0 ? "+" : ""}${latestRound.relativeToPar}`
                         : "–"
                     }
-
                   </small>
 
                 </div>
@@ -299,4 +274,25 @@ export function homePage(state) {
               </p>
 
               <h2 class="card-title">
-               
+                Importér din første Garmin-runde
+              </h2>
+
+              <p class="text-muted">
+                Gå til Data og vælg dine
+                Garmin Golf screenshots.
+              </p>
+
+              <button
+                class="button button--accent button--full"
+                data-page="data"
+                type="button"
+              >
+                Importér runder
+              </button>
+
+            `)
+      }
+
+    </div>
+  `;
+}
