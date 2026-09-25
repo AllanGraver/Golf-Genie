@@ -1,15 +1,41 @@
-import { card, metric } from "../components/ui.js";
+import {
+  card,
+  metric
+} from "../components/ui.js";
+
+function average(values) {
+  const valid = values
+    .map(Number)
+    .filter(Number.isFinite);
+
+  if (!valid.length) {
+    return null;
+  }
+
+  return (
+    valid.reduce(
+      (sum, value) => sum + value,
+      0
+    ) / valid.length
+  ).toFixed(1);
+}
 
 export function homePage(state) {
-
   const profile = state.profile || {
     handicap: 12.7,
     targetHandicap: 10
   };
 
-  const latestRound =
-    state.rounds?.length
+  const rounds =
+    Array.isArray(state.rounds)
       ? state.rounds
+      : [];
+
+  const roundCount = rounds.length;
+
+  const latestRound =
+    roundCount
+      ? rounds
           .slice()
           .sort(
             (a, b) =>
@@ -20,25 +46,46 @@ export function homePage(state) {
           )[0]
       : null;
 
-  const roundCount =
-    state.rounds?.length || 0;
+  const uniqueCourses =
+    new Set(
+      rounds.map(
+        (round) =>
+          round.course || "Ukendt bane"
+      )
+    ).size;
 
   const averageScore =
-    roundCount
-      ? (
-          state.rounds.reduce(
-            (sum, round) =>
-              sum + Number(round.score || 0),
-            0
-          ) / roundCount
-        ).toFixed(1)
-      : null;
+    average(
+      rounds.map(
+        (round) => round.score
+      )
+    );
+
+  const averageFir =
+    average(
+      rounds.map(
+        (round) => round.fir
+      )
+    );
+
+  const averageGir =
+    average(
+      rounds.map(
+        (round) => round.gir
+      )
+    );
+
+  const averagePutts =
+    average(
+      rounds.map(
+        (round) => round.putts
+      )
+    );
 
   return `
     <div class="page">
 
       ${card(`
-
         <div class="row">
 
           <div>
@@ -48,8 +95,9 @@ export function homePage(state) {
             </p>
 
             <div class="kpi">
-              HCP ${String(profile.handicap)
-                .replace(".", ",")}
+              HCP ${String(
+                profile.handicap
+              ).replace(".", ",")}
             </div>
 
           </div>
@@ -62,44 +110,34 @@ export function homePage(state) {
           )}
 
         </div>
-
       `, true)}
 
       ${card(`
-
         <p class="eyebrow">
           GOLF GENIE
         </p>
 
         <h2 class="card-title">
-          Din golfdatabase
+          Din personlige golfdatabase
         </h2>
 
         <p class="text-muted">
-          Importér Garmin Golf scorekort
-          direkte fra screenshots og byg din
-          personlige banehistorik.
+          Importér Garmin Golf scorekort,
+          gennemgå statistik og opbyg
+          en historik over dine runder.
         </p>
-
       `)}
 
       ${card(`
-
         <h2 class="card-title">
-          Statistik
+          Overblik
         </h2>
 
         <div class="metric-grid">
 
           ${metric(
             "Baner",
-            state.rounds
-              ? new Set(
-                  state.rounds.map(
-                    round => round.course
-                  )
-                ).size
-              : 0
+            uniqueCourses
           )}
 
           ${metric(
@@ -113,11 +151,11 @@ export function homePage(state) {
 
           ${metric(
             "Gns. score",
-            averageScore || "–"
+            averageScore ?? "–"
           )}
 
           ${metric(
-            "HCP mål",
+            "Mål HCP",
             profile.targetHandicap
           )}
 
@@ -125,103 +163,140 @@ export function homePage(state) {
 
       `)}
 
+      ${card(`
+        <h2 class="card-title">
+          Gennemsnitlige nøgletal
+        </h2>
+
+        <div class="metric-grid metric-grid--3">
+
+          ${metric(
+            "FIR",
+            averageFir
+              ? `${averageFir}%`
+              : "–"
+          )}
+
+          ${metric(
+            "GIR",
+            averageGir
+              ? `${averageGir}%`
+              : "–"
+          )}
+
+          ${metric(
+            "Putts",
+            averagePutts ?? "–"
+          )}
+
+        </div>
+      `)}
+
       ${
         latestRound
           ? card(`
+              <div class="row">
 
-            <div class="row">
+                <div>
 
-              <div>
+                  <p class="eyebrow">
+                    SENESTE RUNDE
+                  </p>
 
-                <p class="eyebrow">
-                  SENESTE RUNDE
-                </p>
+                  <h2 class="card-title">
+                    ${latestRound.course || "Ukendt bane"}
+                  </h2>
 
-                <h2 class="card-title">
-                  ${latestRound.course}
-                </h2>
+                  <p class="text-muted">
+                    ${latestRound.date || "Ukendt dato"}
+                  </p>
 
-                <p class="text-muted">
-                  ${latestRound.date}
-                </p>
+                </div>
 
-              </div>
+                <div class="round-card__score">
 
-              <div class="round-card__score">
+                  ${latestRound.score ?? "–"}
 
-                ${latestRound.score}
+                  <small>
 
-                <small
-                  style="
-                    display:block;
-                    font-size:11px
-                  "
-                >
+                    ${
+                      latestRound.relativeToPar !== null &&
+                      latestRound.relativeToPar !== undefined
+                        ? `${
+                            latestRound.relativeToPar > 0
+                              ? "+"
+                              : ""
+                          }${latestRound.relativeToPar}`
+                        : "–"
+                    }
 
-                  ${
-                    latestRound.relativeToPar !== null &&
-                    latestRound.relativeToPar !== undefined
-                      ? `+${
-                          latestRound.relativeToPar
-                        }`
-                      : "–"
-                  }
+                  </small>
 
-                </small>
+                </div>
 
               </div>
 
-            </div>
+              <div class="metric-grid metric-grid--3">
 
-            <div class="metric-grid metric-grid--3">
+                ${metric(
+                  "FIR",
+                  latestRound.fir != null
+                    ? `${latestRound.fir}%`
+                    : "–"
+                )}
 
-              ${metric(
-                "FIR",
-                latestRound.fir != null
-                  ? `${latestRound.fir}%`
-                  : "–"
-              )}
+                ${metric(
+                  "GIR",
+                  latestRound.gir != null
+                    ? `${latestRound.gir}%`
+                    : "–"
+                )}
 
-              ${metric(
-                "GIR",
-                latestRound.gir != null
-                  ? `${latestRound.gir}%`
-                  : "–"
-              )}
+                ${metric(
+                  "Putts",
+                  latestRound.putts ?? "–"
+                )}
 
-              ${metric(
-                "Putts",
-                latestRound.putts ?? "–"
-              )}
+              </div>
 
-            </div>
+              <div class="metric-grid">
 
-          `)
+                ${metric(
+                  "Front 9",
+                  latestRound.frontNine ?? "–"
+                )}
+
+                ${metric(
+                  "Back 9",
+                  latestRound.backNine ?? "–"
+                )}
+
+              </div>
+
+              <div class="metric-grid metric-grid--3">
+
+                ${metric(
+                  "Pars",
+                  latestRound.pars ?? "–"
+                )}
+
+                ${metric(
+                  "Bogeys",
+                  latestRound.bogeys ?? "–"
+                )}
+
+                ${metric(
+                  "Double+",
+                  latestRound.doubleBogeyPlus ?? "–"
+                )}
+
+              </div>
+
+            `)
           : card(`
+              <p class="eyebrow">
+                INGEN RUNDER
+              </p>
 
-            <p class="eyebrow">
-              INGEN RUNDER
-            </p>
-
-            <h2 class="card-title">
-              Importér din første Garmin-runde
-            </h2>
-
-            <p class="text-muted">
-              Gå til Data og vælg dine Garmin
-              Golf screenshots.
-            </p>
-
-            <button
-              class="button button--accent button--full"
-              data-page="data"
-            >
-              Importér runder
-            </button>
-
-          `)
-      }
-
-    </div>
-  `;
-}
+              <h2 class="card-title">
+               
