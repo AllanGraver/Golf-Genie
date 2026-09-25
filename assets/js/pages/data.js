@@ -43,9 +43,8 @@ export function dataPage(state) {
         </h2>
 
         <p class="text-muted">
-          Vælg scorekort og statistikbillede direkte fra
-          mobilen. Vælg gerne begge billeder fra den samme
-          runde på én gang.
+          Vælg scorekort og statistikbillede direkte fra mobilen.
+          Vælg gerne begge billeder fra samme runde.
         </p>
 
         <input
@@ -97,13 +96,10 @@ export function dataPage(state) {
 
           <p class="text-muted">
             Kontrollér oplysningerne og ret eventuelle
-            aflæsningsfejl inden import.
+            OCR-fejl før import.
           </p>
 
-          <label for="ocrCourse">
-            Bane
-          </label>
-
+          <label for="ocrCourse">Bane</label>
           <input
             id="ocrCourse"
             type="text"
@@ -111,10 +107,7 @@ export function dataPage(state) {
             placeholder="Eksempelvis Hammel Golf Klub"
           >
 
-          <label for="ocrTees">
-            Teested
-          </label>
-
+          <label for="ocrTees">Teested</label>
           <input
             id="ocrTees"
             type="text"
@@ -122,23 +115,16 @@ export function dataPage(state) {
             placeholder="Eksempelvis Gul Tees"
           >
 
-          <label for="ocrDate">
-            Dato
-          </label>
-
+          <label for="ocrDate">Dato</label>
           <input
             id="ocrDate"
             type="date"
           >
 
-          <label for="ocrScore">
-            Score
-          </label>
-
+          <label for="ocrScore">Score</label>
           <input
             id="ocrScore"
             type="number"
-            inputmode="numeric"
             min="1"
             max="250"
           >
@@ -150,10 +136,8 @@ export function dataPage(state) {
           <input
             id="ocrRelativeToPar"
             type="number"
-            inputmode="numeric"
             min="-30"
             max="100"
-            placeholder="Eksempelvis 17"
           >
 
           <div class="metric-grid metric-grid--3">
@@ -166,7 +150,6 @@ export function dataPage(state) {
               <input
                 id="ocrFir"
                 type="number"
-                inputmode="decimal"
                 step="0.1"
                 min="0"
                 max="100"
@@ -181,7 +164,6 @@ export function dataPage(state) {
               <input
                 id="ocrGir"
                 type="number"
-                inputmode="decimal"
                 step="0.1"
                 min="0"
                 max="100"
@@ -196,7 +178,6 @@ export function dataPage(state) {
               <input
                 id="ocrPutts"
                 type="number"
-                inputmode="numeric"
                 min="0"
                 max="100"
               >
@@ -221,6 +202,7 @@ export function dataPage(state) {
           >
             Importér runden
           </button>
+
         </div>
       `)}
 
@@ -232,7 +214,7 @@ export function dataPage(state) {
         </h2>
 
         <p class="text-muted">
-          Importér en CSV-fil med kolonnerne Club, Carry,
+          Importér CSV med Club, Carry,
           Total og Side Offline.
         </p>
 
@@ -253,9 +235,8 @@ export function dataPage(state) {
         </h2>
 
         <p class="text-muted">
-          Brug denne import som alternativ, hvis du allerede
-          har en JSON- eller CSV-fil med bane, dato, score,
-          FIR, GIR og putts.
+          Importér eksisterende Garmin-data
+          fra JSON eller CSV.
         </p>
 
         <button
@@ -273,6 +254,7 @@ export function dataPage(state) {
         </h2>
 
         <div class="metric-grid">
+
           ${metric(
             "TrackMan",
             `${totalShots} slag`
@@ -286,15 +268,14 @@ export function dataPage(state) {
                 : "runder"
             }`
           )}
+
         </div>
 
         ${
           totalRounds === 0
             ? `
               <div class="status status--info">
-                Der er ingen rigtige runder importeret endnu.
-                Vælg Garmin-billeder ovenfor for at importere
-                den første runde.
+                Der er endnu ingen importerede runder.
               </div>
             `
             : ""
@@ -310,9 +291,9 @@ export function dataPage(state) {
       `, true)}
 
       <div class="status status--info">
-        Billeder og importerede data behandles lokalt i
-        browseren. Gem aldrig Garmin-login, adgangskoder
-        eller tokens i GitHub-repositoriet.
+        Alle billeder og data behandles lokalt
+        i browseren. Gem aldrig loginoplysninger
+        eller API-nøgler i GitHub-repositoriet.
       </div>
 
     </div>
