@@ -36,7 +36,8 @@ let selectedGarminImages = [];
 let garminImagePreviewUrls = [];
 let pendingGarminRound = null;
 
-const byId = (id) => document.getElementById(id);
+const byId = (id) =>
+  document.getElementById(id);
 
 const pages = {
   home: homePage,
@@ -63,18 +64,18 @@ function optionalNumber(id) {
     return null;
   }
 
-  const value = element.value.trim();
+  const value = element.value
+    .trim()
+    .replace(",", ".");
 
   if (value === "") {
     return null;
   }
 
-  const number = Number(
-    value.replace(",", ".")
-  );
+  const parsed = Number(value);
 
-  return Number.isFinite(number)
-    ? number
+  return Number.isFinite(parsed)
+    ? parsed
     : null;
 }
 
@@ -89,9 +90,18 @@ function createRoundId(round) {
     .replaceAll("æ", "ae")
     .replaceAll("ø", "oe")
     .replaceAll("å", "aa")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function normalizeCourseName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("da-DK");
 }
 
 function clearGarminImagePreviews() {
@@ -100,6 +110,13 @@ function clearGarminImagePreviews() {
   });
 
   garminImagePreviewUrls = [];
+}
+
+function setStatus(type, text) {
+  state.status = {
+    type,
+    text
+  };
 }
 
 function renderHeader() {
@@ -114,6 +131,7 @@ function renderHeader() {
       class="brand"
       data-page="home"
       type="button"
+      aria-label="Gå til forsiden"
     >
       <span class="brand__logo">⚑</span>
 
@@ -128,7 +146,9 @@ function renderHeader() {
       </span>
     </button>
 
-    <span class="badge">LOKAL</span>
+    <span class="badge">
+      LOKAL
+    </span>
   `;
 }
 
@@ -147,6 +167,12 @@ function renderNav() {
           }"
           data-page="${page}"
           type="button"
+          aria-label="${label}"
+          aria-current="${
+            state.page === page
+              ? "page"
+              : "false"
+          }"
         >
           <span class="nav-button__icon">
             ${icon}
@@ -169,6 +195,11 @@ function renderNav() {
           }"
           data-page="${page}"
           type="button"
+          aria-current="${
+            state.page === page
+              ? "page"
+              : "false"
+          }"
         >
           ${icon} ${label}
         </button>
@@ -182,7 +213,14 @@ function bindNavigation() {
     .querySelectorAll("[data-page]")
     .forEach((button) => {
       button.onclick = () => {
-        state.page = button.dataset.page;
+        const nextPage =
+          button.dataset.page;
+
+        if (!nextPage) {
+          return;
+        }
+
+        state.page = nextPage;
 
         saveState(state);
         render();
@@ -195,9 +233,15 @@ function bindClubSelection() {
     .querySelectorAll("[data-club]")
     .forEach((button) => {
       button.onclick = () => {
-        state.clubIndex = Number(
+        const clubIndex = Number(
           button.dataset.club
         );
+
+        if (!Number.isInteger(clubIndex)) {
+          return;
+        }
+
+        state.clubIndex = clubIndex;
 
         saveState(state);
         render();
@@ -211,7 +255,7 @@ function bindClubSelection() {
     previousClubButton.onclick = () => {
       state.clubIndex = Math.max(
         0,
-        state.clubIndex - 1
+        Number(state.clubIndex || 0) - 1
       );
 
       saveState(state);
@@ -231,7 +275,7 @@ function bindClubSelection() {
 
       state.clubIndex = Math.min(
         lastClubIndex,
-        state.clubIndex + 1
+        Number(state.clubIndex || 0) + 1
       );
 
       saveState(state);
@@ -284,10 +328,10 @@ function bindResetButton() {
 
     state = resetState();
 
-    state.status = {
-      type: "success",
-      text: "Lokale data er nulstillet."
-    };
+    setStatus(
+      "success",
+      "Lokale data er nulstillet."
+    );
 
     saveState(state);
     render();
@@ -366,10 +410,10 @@ function bindProfileForm() {
       age
     };
 
-    state.status = {
-      type: "success",
-      text: "Profilen er gemt."
-    };
+    setStatus(
+      "success",
+      "Profilen er gemt."
+    );
 
     saveState(state);
     render();
@@ -406,19 +450,15 @@ function bindCourseNotes() {
           noteField.value.trim();
 
         if (note) {
-          state.courseNotes[course] =
-            note;
+          state.courseNotes[course] = note;
         } else {
-          delete state.courseNotes[
-            course
-          ];
+          delete state.courseNotes[course];
         }
 
-        state.status = {
-          type: "success",
-          text:
-            `Banenoten til ${course} er gemt.`
-        };
+        setStatus(
+          "success",
+          `Banenoten til ${course} er gemt.`
+        );
 
         saveState(state);
         render();
@@ -467,7 +507,7 @@ function renderGarminImagePreviews() {
 
         return `
           <figure class="image-preview">
-            ${url}"
+            ${escapeHtml(url)}"
             >
 
             <figcaption>
@@ -534,6 +574,37 @@ function populateGarminReview(round) {
       block: "start"
     });
   }
+}
+
+function updateOcrProgress(
+  progressElement,
+  message
+) {
+  if (!progressElement) {
+    return;
+  }
+
+  const fileNumber =
+    message.fileIndex || 1;
+
+  const fileCount =
+    message.fileCount ||
+    selectedGarminImages.length;
+
+  const percentage =
+    Number.isFinite(message.progress)
+      ? Math.round(
+          message.progress * 100
+        )
+      : null;
+
+  const status =
+    message.status || "Læser billede";
+
+  progressElement.textContent =
+    percentage === null
+      ? `${status} (${fileNumber} af ${fileCount})`
+      : `${status}: ${percentage}% (${fileNumber} af ${fileCount})`;
 }
 
 function bindGarminImageImport() {
@@ -607,34 +678,10 @@ function bindGarminImageImport() {
         await recognizeGarminImages(
           selectedGarminImages,
           (message) => {
-            if (!progress) {
-              return;
-            }
-
-            const fileNumber =
-              message.fileIndex || 1;
-
-            const fileCount =
-              message.fileCount ||
-              selectedGarminImages.length;
-
-            const percentage =
-              Number.isFinite(
-                message.progress
-              )
-                ? Math.round(
-                    message.progress * 100
-                  )
-                : null;
-
-            const status =
-              message.status ||
-              "Læser billede";
-
-            progress.textContent =
-              percentage === null
-                ? `${status} (${fileNumber} af ${fileCount})`
-                : `${status}: ${percentage}% (${fileNumber} af ${fileCount})`;
+            updateOcrProgress(
+              progress,
+              message
+            );
           }
         );
 
@@ -665,6 +712,225 @@ function bindGarminImageImport() {
   };
 }
 
+function validateOcrRound({
+  course,
+  date,
+  score,
+  relativeToPar,
+  fir,
+  gir,
+  putts
+}) {
+  if (!course) {
+    window.alert(
+      "Indtast eller kontrollér banens navn."
+    );
+
+    byId("ocrCourse")?.focus();
+    return false;
+  }
+
+  if (!date) {
+    window.alert(
+      "Indtast eller kontrollér datoen."
+    );
+
+    byId("ocrDate")?.focus();
+    return false;
+  }
+
+  if (
+    score === null ||
+    score < 1 ||
+    score > 250
+  ) {
+    window.alert(
+      "Indtast en gyldig score."
+    );
+
+    byId("ocrScore")?.focus();
+    return false;
+  }
+
+  if (
+    relativeToPar !== null &&
+    (
+      relativeToPar < -30 ||
+      relativeToPar > 100
+    )
+  ) {
+    window.alert(
+      "Resultatet i forhold til par ser ikke gyldigt ud."
+    );
+
+    byId("ocrRelativeToPar")?.focus();
+    return false;
+  }
+
+  if (
+    fir !== null &&
+    (
+      fir < 0 ||
+      fir > 100
+    )
+  ) {
+    window.alert(
+      "FIR skal være mellem 0 og 100 procent."
+    );
+
+    byId("ocrFir")?.focus();
+    return false;
+  }
+
+  if (
+    gir !== null &&
+    (
+      gir < 0 ||
+      gir > 100
+    )
+  ) {
+    window.alert(
+      "GIR skal være mellem 0 og 100 procent."
+    );
+
+    byId("ocrGir")?.focus();
+    return false;
+  }
+
+  if (
+    putts !== null &&
+    (
+      putts < 0 ||
+      putts > 100
+    )
+  ) {
+    window.alert(
+      "Antallet af putts ser ikke gyldigt ud."
+    );
+
+    byId("ocrPutts")?.focus();
+    return false;
+  }
+
+  return true;
+}
+
+function createOcrRound({
+  course,
+  tees,
+  date,
+  score,
+  relativeToPar,
+  fir,
+  gir,
+  putts
+}) {
+  const round = {
+    id: "",
+
+    course,
+    tees,
+    date,
+    score,
+    relativeToPar,
+    fir,
+    gir,
+    putts,
+
+    firMade:
+      pendingGarminRound?.firMade ??
+      null,
+
+    firPossible:
+      pendingGarminRound?.firPossible ??
+      null,
+
+    girMade:
+      pendingGarminRound?.girMade ??
+      null,
+
+    girPossible:
+      pendingGarminRound?.girPossible ??
+      null,
+
+    upAndDown:
+      pendingGarminRound?.upAndDown ??
+      null,
+
+    upAndDownMade:
+      pendingGarminRound
+        ?.upAndDownMade ?? null,
+
+    upAndDownPossible:
+      pendingGarminRound
+        ?.upAndDownPossible ?? null,
+
+    pars:
+      pendingGarminRound?.pars ??
+      null,
+
+    bogeys:
+      pendingGarminRound?.bogeys ??
+      null,
+
+    doubleBogeyPlus:
+      pendingGarminRound
+        ?.doubleBogeyPlus ?? null,
+
+    frontNine:
+      pendingGarminRound?.frontNine ??
+      null,
+
+    backNine:
+      pendingGarminRound?.backNine ??
+      null,
+
+    holes:
+      Array.isArray(
+        pendingGarminRound?.holes
+      )
+        ? [...pendingGarminRound.holes]
+        : [],
+
+    ocrImages:
+      Array.isArray(
+        pendingGarminRound?.images
+      )
+        ? [...pendingGarminRound.images]
+        : [],
+
+    source: "Garmin PNG",
+
+    importedAt:
+      new Date().toISOString()
+  };
+
+  round.id = createRoundId(round);
+
+  return round;
+}
+
+function findDuplicateRoundIndex(
+  rounds,
+  candidate
+) {
+  return rounds.findIndex((round) => {
+    if (round.id === candidate.id) {
+      return true;
+    }
+
+    return (
+      normalizeCourseName(round.course) ===
+        normalizeCourseName(
+          candidate.course
+        ) &&
+      round.date === candidate.date &&
+      Number(round.score) ===
+        candidate.score
+    );
+  });
+}
+
 function bindGarminOcrSave() {
   const importButton =
     byId("importGarminOcrRound");
@@ -674,231 +940,50 @@ function bindGarminOcrSave() {
   }
 
   importButton.onclick = () => {
-    const course =
-      byId("ocrCourse")?.value.trim();
+    const roundInput = {
+      course:
+        byId("ocrCourse")
+          ?.value.trim() || "",
 
-    const tees =
-      byId("ocrTees")?.value.trim() || "";
+      tees:
+        byId("ocrTees")
+          ?.value.trim() || "",
 
-    const date =
-      byId("ocrDate")?.value || "";
+      date:
+        byId("ocrDate")
+          ?.value || "",
 
-    const score =
-      optionalNumber("ocrScore");
+      score:
+        optionalNumber("ocrScore"),
 
-    const relativeToPar =
-      optionalNumber(
-        "ocrRelativeToPar"
-      );
+      relativeToPar:
+        optionalNumber(
+          "ocrRelativeToPar"
+        ),
 
-    const fir =
-      optionalNumber("ocrFir");
+      fir:
+        optionalNumber("ocrFir"),
 
-    const gir =
-      optionalNumber("ocrGir");
+      gir:
+        optionalNumber("ocrGir"),
 
-    const putts =
-      optionalNumber("ocrPutts");
-
-    if (!course) {
-      window.alert(
-        "Indtast eller kontrollér banens navn."
-      );
-
-      byId("ocrCourse")?.focus();
-      return;
-    }
-
-    if (!date) {
-      window.alert(
-        "Indtast eller kontrollér datoen."
-      );
-
-      byId("ocrDate")?.focus();
-      return;
-    }
-
-    if (
-      score === null ||
-      score < 1 ||
-      score > 250
-    ) {
-      window.alert(
-        "Indtast en gyldig score."
-      );
-
-      byId("ocrScore")?.focus();
-      return;
-    }
-
-    if (
-      relativeToPar !== null &&
-      (
-        relativeToPar < -30 ||
-        relativeToPar > 100
-      )
-    ) {
-      window.alert(
-        "Resultatet i forhold til par ser ikke gyldigt ud."
-      );
-
-      byId("ocrRelativeToPar")?.focus();
-      return;
-    }
-
-    if (
-      fir !== null &&
-      (
-        fir < 0 ||
-        fir > 100
-      )
-    ) {
-      window.alert(
-        "FIR skal være mellem 0 og 100 procent."
-      );
-
-      byId("ocrFir")?.focus();
-      return;
-    }
-
-    if (
-      gir !== null &&
-      (
-        gir < 0 ||
-        gir > 100
-      )
-    ) {
-      window.alert(
-        "GIR skal være mellem 0 og 100 procent."
-      );
-
-      byId("ocrGir")?.focus();
-      return;
-    }
-
-    if (
-      putts !== null &&
-      (
-        putts < 0 ||
-        putts > 100
-      )
-    ) {
-      window.alert(
-        "Antallet af putts ser ikke gyldigt ud."
-      );
-
-      byId("ocrPutts")?.focus();
-      return;
-    }
-
-    const newRound = {
-      id: "",
-
-      course,
-      tees,
-      date,
-      score,
-      relativeToPar,
-      fir,
-      gir,
-      putts,
-
-      firMade:
-        pendingGarminRound?.firMade ??
-        null,
-
-      firPossible:
-        pendingGarminRound?.firPossible ??
-        null,
-
-      girMade:
-        pendingGarminRound?.girMade ??
-        null,
-
-      girPossible:
-        pendingGarminRound?.girPossible ??
-        null,
-
-      upAndDown:
-        pendingGarminRound?.upAndDown ??
-        null,
-
-      upAndDownMade:
-        pendingGarminRound
-          ?.upAndDownMade ?? null,
-
-      upAndDownPossible:
-        pendingGarminRound
-          ?.upAndDownPossible ?? null,
-
-      pars:
-        pendingGarminRound?.pars ??
-        null,
-
-      bogeys:
-        pendingGarminRound?.bogeys ??
-        null,
-
-      doubleBogeyPlus:
-        pendingGarminRound
-          ?.doubleBogeyPlus ?? null,
-
-      frontNine:
-        pendingGarminRound?.frontNine ??
-        null,
-
-      backNine:
-        pendingGarminRound?.backNine ??
-        null,
-
-      holes:
-        Array.isArray(
-          pendingGarminRound?.holes
-        )
-          ? [
-              ...pendingGarminRound.holes
-            ]
-          : [],
-
-      ocrImages:
-        Array.isArray(
-          pendingGarminRound?.images
-        )
-          ? [
-              ...pendingGarminRound.images
-            ]
-          : [],
-
-      source: "Garmin PNG",
-
-      importedAt:
-        new Date().toISOString()
+      putts:
+        optionalNumber("ocrPutts")
     };
 
-    newRound.id =
-      createRoundId(newRound);
+    if (!validateOcrRound(roundInput)) {
+      return;
+    }
+
+    const newRound =
+      createOcrRound(roundInput);
 
     state.rounds ??= [];
 
     const duplicateIndex =
-      state.rounds.findIndex(
-        (round) =>
-          round.id === newRound.id ||
-          (
-            String(
-              round.course || ""
-            ).toLocaleLowerCase(
-              "da-DK"
-            ) ===
-              newRound.course
-                .toLocaleLowerCase(
-                  "da-DK"
-                ) &&
-            round.date ===
-              newRound.date &&
-            Number(round.score) ===
-              newRound.score
-          )
+      findDuplicateRoundIndex(
+        state.rounds,
+        newRound
       );
 
     if (duplicateIndex >= 0) {
@@ -926,11 +1011,10 @@ function bindGarminOcrSave() {
           )
     );
 
-    state.status = {
-      type: "success",
-      text:
-        `Runden på ${course} er importeret.`
-    };
+    setStatus(
+      "success",
+      `Runden på ${newRound.course} er importeret.`
+    );
 
     clearGarminImagePreviews();
 
@@ -966,11 +1050,31 @@ function render() {
   const app = byId("app");
 
   if (!app) {
+    console.error(
+      'Elementet med id="app" blev ikke fundet.'
+    );
+
     return;
   }
 
-  app.innerHTML =
-    pageRenderer(state);
+  try {
+    app.innerHTML =
+      pageRenderer(state);
+  } catch (error) {
+    console.error(
+      "Siden kunne ikke renderes:",
+      error
+    );
+
+    app.innerHTML = `
+      <div class="page">
+        <div class="status status--error">
+          Appen kunne ikke vise siden.
+          Kontrollér browserens konsol for flere oplysninger.
+        </div>
+      </div>
+    `;
+  }
 
   bind();
 }
@@ -994,24 +1098,22 @@ if (trackmanFileInput) {
 
         state.clubs = importTrackman(
           parseCsv(fileContent),
-          state.clubs
+          state.clubs || []
         );
 
         state.clubIndex = 0;
 
-        state.status = {
-          type: "success",
-          text:
-            `${state.clubs.length} køller importeret.`
-        };
+        setStatus(
+          "success",
+          `${state.clubs.length} køller importeret.`
+        );
       } catch (error) {
-        state.status = {
-          type: "error",
-          text:
-            error instanceof Error
-              ? error.message
-              : "TrackMan-filen kunne ikke importeres."
-        };
+        setStatus(
+          "error",
+          error instanceof Error
+            ? error.message
+            : "TrackMan-filen kunne ikke importeres."
+        );
       }
 
       event.target.value = "";
@@ -1035,49 +1137,46 @@ if (garminFileInput) {
           return;
         }
 
-        const text =
+        const fileContent =
           await file.text();
 
-        const raw =
+        const rawData =
           file.name
             .toLowerCase()
             .endsWith(".json")
-            ? JSON.parse(text)
-            : parseCsv(text);
+            ? JSON.parse(fileContent)
+            : parseCsv(fileContent);
 
         const importedRounds =
-          importGarmin(raw);
+          importGarmin(rawData);
 
         const preparedRounds =
-          importedRounds.map(
-            (round) => {
-              const preparedRound = {
-                ...round,
+          importedRounds.map((round) => {
+            const preparedRound = {
+              ...round,
 
-                source:
-                  round.source ||
-                  "Garmin-fil"
-              };
+              source:
+                round.source ||
+                "Garmin-fil"
+            };
 
-              preparedRound.id =
-                round.id ||
-                createRoundId(
-                  preparedRound
-                );
+            preparedRound.id =
+              round.id ||
+              createRoundId(
+                preparedRound
+              );
 
-              return preparedRound;
-            }
-          );
+            return preparedRound;
+          });
 
         state.rounds ??= [];
 
         preparedRounds.forEach(
           (importedRound) => {
             const existingIndex =
-              state.rounds.findIndex(
-                (round) =>
-                  round.id ===
-                    importedRound.id
+              findDuplicateRoundIndex(
+                state.rounds,
+                importedRound
               );
 
             if (existingIndex >= 0) {
@@ -1100,19 +1199,17 @@ if (garminFileInput) {
               )
         );
 
-        state.status = {
-          type: "success",
-          text:
-            `${preparedRounds.length} runder importeret.`
-        };
+        setStatus(
+          "success",
+          `${preparedRounds.length} runder importeret.`
+        );
       } catch (error) {
-        state.status = {
-          type: "error",
-          text:
-            error instanceof Error
-              ? error.message
-              : "Garmin-filen kunne ikke importeres."
-        };
+        setStatus(
+          "error",
+          error instanceof Error
+            ? error.message
+            : "Garmin-filen kunne ikke importeres."
+        );
       }
 
       event.target.value = "";
