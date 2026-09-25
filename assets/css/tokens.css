@@ -1,12 +1,93 @@
-/* DESIGN TOKENS: Ret farver, afstande og typografi her */
+/* DESIGN TOKENS
+   Én central fil til farver, spacing,
+   typografi, skygger og dashboard-temaer.
+*/
+
 :root {
-  --color-primary-950:#052e2b; --color-primary-900:#064e3b; --color-primary-700:#047857;
-  --color-accent:#bef264; --color-page:#f4f7f3; --color-card:#ffffff;
-  --color-text:#0f172a; --color-muted:#64748b; --color-border:#e2e8f0;
-  --color-danger:#be123c; --color-warning:#a16207;
-  --radius-sm:12px; --radius-md:16px; --radius-lg:24px;
-  --shadow-card:0 3px 14px rgba(15,23,42,.05);
-  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
-  --font-ui:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --text-xs:11px; --text-sm:14px; --text-base:16px; --text-lg:20px; --text-xl:24px; --text-kpi:36px;
+
+  /* ---------- BRAND ---------- */
+
+  --color-primary-950:#052e2b;
+  --color-primary-900:#064e3b;
+  --color-primary-700:#047857;
+
+  --color-accent:#bef264;
+
+  /* ---------- UI ---------- */
+
+  --color-page:#f4f7f3;
+  --color-card:#ffffff;
+
+  --color-text:#0f172a;
+  --color-muted:#64748b;
+  --color-border:#e2e8f0;
+
+  /* ---------- STATUS ---------- */
+
+  --color-success:#16a34a;
+  --color-danger:#be123c;
+  --color-warning:#a16207;
+
+  /* ---------- DATA SOURCES ---------- */
+
+  --color-garmin:#0369a1;
+  --color-trackman:#c2410c;
+
+  /* ---------- CHARTS ---------- */
+
+  --color-chart-1:#047857;
+  --color-chart-2:#65a30d;
+  --color-chart-3:#0ea5e9;
+  --color-chart-4:#f59e0b;
+  --color-chart-5:#7c3aed;
+
+  /* ---------- RADII ---------- */
+
+  --radius-sm:12px;
+  --radius-md:16px;
+  --radius-lg:24px;
+
+  /* ---------- SHADOWS ---------- */
+
+  --shadow-card:
+    0 3px 14px rgba(15,23,42,.05);
+
+  --shadow-hover:
+    0 8px 24px rgba(15,23,42,.08);
+
+  /* ---------- SPACING ---------- */
+
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:20px;
+  --space-6:24px;
+  --space-7:32px;
+  --space-8:40px;
+
+  /* ---------- FONT ---------- */
+
+  --font-ui:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+
+  /* ---------- TEXT ---------- */
+
+  --text-xs:11px;
+  --text-sm:14px;
+  --text-base:16px;
+  --text-lg:20px;
+  --text-xl:24px;
+  --text-2xl:32px;
+
+  /* ---------- KPI ---------- */
+
+  --text-kpi:36px;
+  --text-kpi-large:48px;
+
 }
