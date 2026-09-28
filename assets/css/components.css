@@ -730,3 +730,264 @@ label{
     grid-template-columns:repeat(4,1fr);
   }
 }
+
+/* ==========================================
+   TRAINING INTELLIGENCE
+========================================== */
+
+.training-cockpit{
+  display:grid;
+  gap:16px;
+}
+
+.training-score-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+
+.training-score-focus{
+  display:flex;
+  flex-direction:column;
+  text-align:right;
+}
+
+.training-score-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:70px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#ecfdf5;
+  color:var(--color-primary-700);
+  font-weight:700;
+}
+
+.section-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.training-focus-list{
+  display:grid;
+  gap:12px;
+}
+
+.training-focus-item{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  padding:12px;
+  border:1px solid var(--color-border);
+  border-radius:12px;
+}
+
+.training-focus-item__rank{
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:var(--color-primary-900);
+  color:white;
+  font-weight:700;
+}
+
+.training-focus-item__content{
+  flex:1;
+}
+
+/* ==========================================
+   SKILLS
+========================================== */
+
+.skills-list{
+  display:grid;
+  gap:12px;
+}
+
+.skill-row{
+  display:grid;
+  gap:6px;
+}
+
+.skill-row__header{
+  display:flex;
+  justify-content:space-between;
+}
+
+.skill-bar{
+  height:10px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#e5e7eb;
+}
+
+.skill-bar span{
+  display:block;
+  height:100%;
+  background:var(--color-primary-700);
+}
+
+/* ==========================================
+   WEEKLY PLAN
+========================================== */
+
+.weekly-plan-grid{
+  display:grid;
+  gap:12px;
+}
+
+.training-session{
+  padding:14px;
+  border:1px solid var(--color-border);
+  border-radius:12px;
+}
+
+/* ==========================================
+   APPROACH COCKPIT
+========================================== */
+
+.approach-target-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;
+}
+
+.approach-target-card{
+  display:grid;
+  gap:8px;
+  padding:14px;
+  border:1px solid var(--color-border);
+  border-radius:12px;
+}
+
+/* ==========================================
+   WEDGE MATRIX
+========================================== */
+
+.wedge-matrix{
+  display:grid;
+  gap:8px;
+}
+
+.wedge-matrix__header,
+.wedge-matrix__row{
+  display:grid;
+  grid-template-columns:1.3fr 1fr 1fr 1fr;
+  gap:8px;
+}
+
+.wedge-matrix__header{
+  font-weight:700;
+}
+
+.wedge-matrix__row{
+  padding:10px;
+  border:1px solid var(--color-border);
+  border-radius:10px;
+}
+
+/* ==========================================
+   DRILL CARDS
+========================================== */
+
+.drill-entry{
+  display:grid;
+  gap:8px;
+}
+
+.drill-explanation-slot{
+  display:block;
+}
+
+.drill-info{
+  padding:14px;
+  border:1px solid var(--color-border);
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+.drill-info__header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.drill-info__close{
+  border:none;
+  background:none;
+  font-size:20px;
+}
+
+.drill-info__section{
+  margin-top:12px;
+}
+
+.drill-kpi-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.drill-kpi-list span{
+  padding:4px 10px;
+  border-radius:999px;
+  background:#ecfdf5;
+  color:var(--color-primary-700);
+}
+
+/* ==========================================
+   LIBRARY
+========================================== */
+
+.training-library-grid{
+  display:grid;
+  gap:16px;
+}
+
+.training-library-group{
+  display:grid;
+  gap:10px;
+}
+
+/* ==========================================
+   COACH
+========================================== */
+
+.coach-summary{
+  display:grid;
+  gap:16px;
+}
+
+.coach-summary__lead{
+  display:grid;
+  gap:8px;
+}
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media(max-width:767px){
+
+  .training-score-header{
+    flex-direction:column;
+  }
+
+  .training-score-focus{
+    text-align:left;
+  }
+
+  .wedge-matrix__header,
+  .wedge-matrix__row{
+    grid-template-columns:1fr;
+  }
+
+}
