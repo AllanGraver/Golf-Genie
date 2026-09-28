@@ -141,8 +141,8 @@ label{
   z-index:30;
   display:grid;
 
-  /* 5 sider */
-  grid-template-columns:repeat(5,1fr);
+  /* 6 sider */
+  grid-template-columns:repeat(6,1fr);
 
   padding:8px 4px max(8px,env(safe-area-inset-bottom));
   background:rgba(255,255,255,.96);
@@ -248,3 +248,18 @@ label{
   }
 }
 ``
+
+/* Phase 3.1: Golf Genie Score and Coach Recommendation 2.0 */
+.genie-score-hero{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;}
+.genie-score-ring{--ring:#bef264;display:grid;grid-template-columns:auto auto;align-items:baseline;justify-content:center;width:112px;height:112px;padding-top:34px;border-radius:50%;background:conic-gradient(var(--ring) calc(var(--score)*1%),rgba(255,255,255,.12) 0);box-shadow:inset 0 0 0 10px rgba(5,46,43,.82);}
+.genie-score-ring span{font-size:34px;font-weight:800;}.genie-score-ring small{font-size:12px;opacity:.75;}
+.genie-score-ring--steady{--ring:#f59e0b}.genie-score-ring--focus{--ring:#fb7185}
+.genie-score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px;}
+.genie-score-row{padding:12px;border:1px solid rgba(255,255,255,.14);border-radius:14px;}.genie-score-row>div:first-child{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.genie-score-track{height:7px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}.genie-score-track span{display:block;height:100%;border-radius:inherit;background:#bef264}.genie-score-row--steady .genie-score-track span{background:#f59e0b}.genie-score-row--focus .genie-score-track span{background:#fb7185}
+.coach-20-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.coach-20-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.coach-disclaimer{padding:12px;border-radius:12px;background:#f8fafc;color:var(--color-muted);font-size:12px}
+.home-handicap-target{min-width:110px;padding:14px;border:1px solid rgba(255,255,255,.14);border-radius:16px;text-align:center}.home-handicap-target span,.home-handicap-target small{display:block;opacity:.8}.home-handicap-target strong{display:block;margin:4px 0;font-size:30px}
+.home-focus-list{display:grid;gap:10px}.home-focus-item{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;width:100%;padding:14px;border:1px solid var(--color-border);border-radius:16px;background:#fff;color:inherit;text-align:left}.home-focus-item__rank{display:grid;width:34px;height:34px;place-items:center;border-radius:50%;background:#ecfdf5;color:var(--color-primary-700);font-weight:800}.home-focus-item__content{display:grid;gap:3px}.home-focus-item__content small{color:var(--color-primary-700);font-weight:700}.home-focus-item__content span{color:var(--color-muted);font-size:12px}.home-focus-item__score{font-weight:800;color:var(--color-primary-700)}
+.data-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}.data-status-card{display:grid;gap:8px;padding:16px;border:1px solid var(--color-border);border-radius:16px;background:#f8fafc}.data-status-card strong{font-size:20px}.data-status-card span:last-child{color:var(--color-muted);font-size:12px}.home-import-card .file-input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}.garmin-review{margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border)}
+@media(max-width:767px){.genie-score-hero{grid-template-columns:auto 1fr}.home-handicap-target{grid-column:1/-1;width:100%}.genie-score-grid,.coach-20-grid,.data-status-grid{grid-template-columns:1fr}.home-focus-item{grid-template-columns:34px 1fr}.home-focus-item__score{grid-column:2}.genie-score-ring{width:92px;height:92px;padding-top:27px}.genie-score-ring span{font-size:28px}}
+
