@@ -72,7 +72,7 @@ function findClub(clubs, patterns) {
   }) || null;
 }
 
-function calculateAnalysis(rounds, clubs) {
+export function calculateCoachAnalysis(rounds, clubs) {
   const latest = recentRounds(rounds);
   const fir = average(latest.map((round) => percentage(
     round.firMade,
@@ -126,11 +126,11 @@ function calculateAnalysis(rounds, clubs) {
   };
 }
 
-function totalScore(scores) {
+export function getGolfGenieScore(scores) {
   return Math.round(average(Object.values(scores)) ?? 0);
 }
 
-function focusAreas(analysis) {
+export function getCoachFocusAreas(analysis) {
   return [
     {
       key: "approach",
@@ -177,6 +177,49 @@ function focusAreas(analysis) {
       reason: "Kalibrér mellem-slag omkring de største carry-gaps."
     }
   ].sort((a, b) => a.score - b.score).slice(0, 3);
+}
+
+export function getPrimaryRecommendation(analysis) {
+  const primary = getCoachFocusAreas(analysis)[0];
+  const presets = {
+    approach: {
+      target: analysis.gir == null ? "Etablér GIR-baseline" : `GIR ${format(Math.min(100, analysis.gir + 8), "%")}`,
+      drillId: analysis.gir != null && analysis.gir < 35 ? "130m" : "150m",
+      drill: analysis.gir != null && analysis.gir < 35 ? "130 m Challenge" : "150 m Precision",
+      sessions: "2 sessioner"
+    },
+    driver: {
+      target: analysis.fir == null ? "Etablér FIR-baseline" : `FIR ${format(Math.min(100, analysis.fir + 8), "%")}`,
+      drillId: "fairway",
+      drill: "Fairway Challenge",
+      sessions: "2 sessioner"
+    },
+    putting: {
+      target: analysis.putts == null ? "Etablér putting-baseline" : `${format(Math.max(18, analysis.putts - 2))} putts`,
+      drillId: "gate",
+      drill: "Gate Drill",
+      sessions: "2 korte sessioner"
+    },
+    scoring: {
+      target: analysis.doubles == null ? "Etablér scoring-baseline" : `${format(Math.max(0, analysis.doubles - 1))} double+`,
+      drillId: "nineball",
+      drill: "9-ball Challenge",
+      sessions: "1-2 sessioner"
+    },
+    distance: {
+      target: analysis.dispersion == null ? "Etablér sprednings-baseline" : `${format(Math.max(8, analysis.dispersion * 0.85), " m")} spredning`,
+      drillId: "dispersion",
+      drill: "Dispersion Challenge",
+      sessions: "2 sessioner"
+    },
+    bag: {
+      target: "Ingen kritiske gaps",
+      drillId: "random",
+      drill: "Random Distance",
+      sessions: "1 kalibreringssession"
+    }
+  };
+  return { ...primary, ...(presets[primary.key] || presets.approach) };
 }
 
 const DRILLS = {
@@ -515,16 +558,16 @@ function renderLibrary() {
 export function trainingPage(state) {
   const rounds = Array.isArray(state.rounds) ? state.rounds : [];
   const clubs = Array.isArray(state.clubs) ? state.clubs : [];
-  const analysis = calculateAnalysis(rounds, clubs);
-  const score = totalScore(analysis.scores);
-  const focus = focusAreas(analysis);
+  const analysis = calculateCoachAnalysis(rounds, clubs);
+  const score = getGolfGenieScore(analysis.scores);
+  const focus = getCoachFocusAreas(analysis);
   const driver = analysis.driver;
 
   return `
     <div class="page training-cockpit">
       ${pageHeader(
         "TRAINING INTELLIGENCE",
-        "Coach",
+        "Mit træningscockpit",
         "Prioritering baseret på Garmin-runder og TrackMan-data."
       )}
 
