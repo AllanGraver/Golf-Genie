@@ -141,8 +141,8 @@ label{
   z-index:30;
   display:grid;
 
-  /* 6 sider */
-  grid-template-columns:repeat(6,1fr);
+  /* 5 sider */
+  grid-template-columns:repeat(5,1fr);
 
   padding:8px 4px max(8px,env(safe-area-inset-bottom));
   background:rgba(255,255,255,.96);
@@ -248,29 +248,3 @@ label{
   }
 }
 ``
-
-/* Fase 1: Mit Spil */
-.home-score-header{display:flex;align-items:center;justify-content:space-between;gap:20px;}
-.home-handicap-target{min-width:120px;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:16px;text-align:center;}
-.home-handicap-target span,.home-handicap-target small{display:block;opacity:.75;}
-.home-handicap-target strong{display:block;margin:4px 0;font-size:32px;}
-.home-focus-list{display:grid;gap:10px;}
-.home-focus-item{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;width:100%;padding:14px;border:1px solid var(--color-border);border-radius:16px;background:#fff;color:inherit;text-align:left;}
-.home-focus-item__rank{display:grid;width:34px;height:34px;place-items:center;border-radius:50%;background:#ecfdf5;color:var(--color-primary-700);font-weight:800;}
-.home-focus-item__content{display:grid;gap:3px;}
-.home-focus-item__content small{color:var(--color-primary-700);font-weight:700;}
-.home-focus-item__content span{color:var(--color-muted);font-size:12px;}
-.home-focus-item__score{font-weight:800;color:var(--color-primary-700);}
-.data-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px;}
-.data-status-card{display:grid;gap:8px;padding:16px;border:1px solid var(--color-border);border-radius:16px;background:#f8fafc;}
-.data-status-card strong{font-size:20px;}
-.data-status-card span:last-child{color:var(--color-muted);font-size:12px;}
-.home-import-card .file-input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%);}
-.garmin-review{margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border);}
-@media(max-width:767px){
-  .home-score-header{align-items:flex-start;}
-  .home-handicap-target{min-width:105px;}
-  .home-focus-item{grid-template-columns:34px 1fr;}
-  .home-focus-item__score{grid-column:2;}
-  .data-status-grid{grid-template-columns:1fr;}
-}
