@@ -1,5 +1,5 @@
 import { loadState, saveState, resetState } from "./core/storage.js";
-import { parseCsv, importTrackman, importGarmin } from "./core/importers.js";
+import { parseCsv, importTrackman } from "./core/importers.js";
 import { recognizeGarminImages } from "./core/garmin-ocr.js";
 import { homePage } from "./pages/home.js";
 import { roundsPage } from "./pages/rounds.js";
@@ -8,15 +8,14 @@ import {
   bindTrainingDrillCards
 } from "./pages/training.js";
 import { bagPage } from "./pages/bag.js";
-import { dataPage } from "./pages/data.js";
+
 import { profilePage } from "./pages/profile.js";
 
 const NAV = [
-  ["home", "⌂", "Home"],
-  ["rounds", "⚑", "Runder"],
-  ["training", "◎", "Træning"],
-  ["bag", "♧", "Bag"],
-  ["data", "▦", "Data"],
+  ["home", "⌂", "Mit Spil"],
+  ["rounds", "⚑", "Baner"],
+  ["training", "◎", "Coach"],
+  ["bag", "♧", "Bag IQ"],
   ["profile", "👤", "Profil"]
 ];
 
@@ -32,9 +31,9 @@ const pages = {
   rounds: roundsPage,
   training: trainingPage,
   bag: bagPage,
-  data: dataPage,
   profile: profilePage
 };
+if (!pages[state.page]) state.page = "home";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -164,7 +163,6 @@ function bindClubSelection() {
 
 function bindImportButtons() {
   byId("trackmanButton")?.addEventListener("click", () => byId("trackmanFile")?.click());
-  byId("garminButton")?.addEventListener("click", () => byId("garminFile")?.click());
 }
 
 function clearPreviews() {
@@ -515,32 +513,6 @@ if (trackmanFile) {
       setStatus("success", `${state.clubs.length} køller importeret.`);
     } catch (error) {
       setStatus("error", error instanceof Error ? error.message : "TrackMan-import mislykkedes.");
-    }
-    event.target.value = "";
-    saveState(state);
-    render();
-  };
-}
-
-const garminFile = byId("garminFile");
-if (garminFile) {
-  garminFile.onchange = async (event) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      const data = file.name.toLowerCase().endsWith(".json") ? JSON.parse(text) : parseCsv(text);
-      const imported = importGarmin(data);
-      state.rounds ??= [];
-      imported.forEach((round) => {
-        const prepared = { ...round, id: round.id || createRoundId(round) };
-        const index = duplicateIndex(state.rounds, prepared);
-        if (index >= 0) state.rounds[index] = prepared;
-        else state.rounds.push(prepared);
-      });
-      setStatus("success", `${imported.length} runder importeret.`);
-    } catch (error) {
-      setStatus("error", error instanceof Error ? error.message : "Garmin-import mislykkedes.");
     }
     event.target.value = "";
     saveState(state);
