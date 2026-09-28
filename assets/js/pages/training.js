@@ -524,7 +524,7 @@ export function trainingPage(state) {
     <div class="page training-cockpit">
       ${pageHeader(
         "TRAINING INTELLIGENCE",
-        "Mit træningscockpit",
+        "Coach",
         "Prioritering baseret på Garmin-runder og TrackMan-data."
       )}
 

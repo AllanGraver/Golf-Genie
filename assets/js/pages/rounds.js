@@ -791,7 +791,7 @@ export function roundsPage(state) {
       <div class="page">
         ${pageHeader(
           "GARMIN GOLF",
-          "Mine baner",
+          "Baner",
           "Ingen runder importeret endnu"
         )}
 
@@ -802,15 +802,15 @@ export function roundsPage(state) {
             </h2>
 
             <p class="text-muted">
-              Gå til Data og importér dine Garmin Golf-billeder.
+              Gå til Mit Spil og importér dine Garmin Golf-billeder.
             </p>
 
             <button
               class="button button--accent button--full"
-              data-page="data"
+              data-page="home"
               type="button"
             >
-              Gå til import
+              Gå til Mit Spil
             </button>
           </div>
         `)}
@@ -847,7 +847,7 @@ export function roundsPage(state) {
     <div class="page">
       ${pageHeader(
         "GARMIN GOLF",
-        "Mine baner",
+        "Baner",
         `${rounds.length} ${rounds.length === 1 ? "runde" : "runder"} på ${courses.length} ${courses.length === 1 ? "bane" : "baner"}`
       )}
 

@@ -409,7 +409,7 @@ export function bagPage(state) {
       <div class="page">
         ${pageHeader(
           "TRACKMAN",
-          "Min bag",
+          "Bag IQ",
           "Ingen TrackMan-data importeret endnu"
         )}
 
@@ -426,10 +426,10 @@ export function bagPage(state) {
 
             <button
               class="button button--accent button--full"
-              data-page="data"
+              data-page="home"
               type="button"
             >
-              Gå til Data
+              Gå til Mit Spil
             </button>
           </div>
         `)}
@@ -483,7 +483,7 @@ export function bagPage(state) {
     <div class="page bag-cockpit">
       ${pageHeader(
         "TRACKMAN BAG INTELLIGENCE",
-        "Min bag",
+        "Bag IQ",
         "Carry-gaps, afstandsdækning og længdekontrol på samme side."
       )}
 
