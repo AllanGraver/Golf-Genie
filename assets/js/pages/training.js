@@ -14,91 +14,37 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function clamp(value, minimum = 0, maximum = 100) {
-  return Math.min(maximum, Math.max(minimum, value));
-}
-
 function average(values) {
-  const valid = values
-    .map(Number)
-    .filter(Number.isFinite);
-
-  if (!valid.length) {
-    return null;
-  }
-
-  return valid.reduce((sum, value) => sum + value, 0) / valid.length;
-}
-
-function roundOne(value) {
-  return Number.isFinite(value)
-    ? Math.round(value * 10) / 10
+  const valid = values.map(Number).filter(Number.isFinite);
+  return valid.length
+    ? valid.reduce((sum, value) => sum + value, 0) / valid.length
     : null;
 }
 
-function formatNumber(value, suffix = "") {
-  if (!Number.isFinite(Number(value))) {
-    return "–";
-  }
-
-  return `${String(roundOne(Number(value))).replace(".", ",")}${suffix}`;
+function clamp(value, min = 0, max = 100) {
+  return Math.min(max, Math.max(min, value));
 }
 
-function calculatePercentage(made, possible, fallback) {
-  const madeNumber = Number(made);
-  const possibleNumber = Number(possible);
+function format(value, suffix = "") {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? `${String(Math.round(number * 10) / 10).replace(".", ",")}${suffix}`
+    : "–";
+}
 
-  if (
-    Number.isFinite(madeNumber) &&
-    Number.isFinite(possibleNumber) &&
-    possibleNumber > 0
-  ) {
-    return (madeNumber / possibleNumber) * 100;
+function percentage(made, possible, fallback) {
+  const hit = Number(made);
+  const total = Number(possible);
+
+  if (Number.isFinite(hit) && Number.isFinite(total) && total > 0) {
+    return (hit / total) * 100;
   }
 
   const fallbackNumber = Number(fallback);
   return Number.isFinite(fallbackNumber) ? fallbackNumber : null;
 }
 
-function getRecentRounds(rounds, limit = 10) {
-  return [...rounds]
-    .sort((a, b) =>
-      String(b.date || "").localeCompare(String(a.date || ""))
-    )
-    .slice(0, limit);
-}
-
-function roundStatistics(round) {
-  return {
-    fir: calculatePercentage(
-      round.firMade,
-      round.firPossible,
-      round.fir
-    ),
-    gir: calculatePercentage(
-      round.girMade,
-      round.girPossible,
-      round.gir
-    ),
-    putts: Number.isFinite(Number(round.putts))
-      ? Number(round.putts)
-      : null,
-    doubleBogeyPlus: Number.isFinite(Number(round.doubleBogeyPlus))
-      ? Number(round.doubleBogeyPlus)
-      : null,
-    bogeys: Number.isFinite(Number(round.bogeys))
-      ? Number(round.bogeys)
-      : null,
-    pars: Number.isFinite(Number(round.pars))
-      ? Number(round.pars)
-      : null,
-    birdies: Number.isFinite(Number(round.birdies))
-      ? Number(round.birdies)
-      : null
-  };
-}
-
-function clubNameKey(value) {
+function clubKey(value) {
   return String(value || "")
     .toLowerCase()
     .replaceAll("æ", "ae")
@@ -107,272 +53,331 @@ function clubNameKey(value) {
     .replace(/[^a-z0-9]/g, "");
 }
 
-function findClub(clubs, patterns) {
-  return clubs.find((club) => {
-    const name = clubNameKey(club.name);
-    return patterns.some((pattern) => name.includes(pattern));
-  }) || null;
+function recentRounds(rounds, limit = 10) {
+  return [...rounds]
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .slice(0, limit);
 }
 
-function sortClubsByCarry(clubs) {
+function sortedClubs(clubs) {
   return [...clubs]
     .filter((club) => Number.isFinite(Number(club.carry)))
     .sort((a, b) => Number(b.carry) - Number(a.carry));
 }
 
-function calculateBagGaps(clubs) {
-  const sorted = sortClubsByCarry(clubs);
-
-  return sorted.slice(0, -1).map((club, index) => ({
-    from: club,
-    to: sorted[index + 1],
-    gap: Number(club.carry) - Number(sorted[index + 1].carry)
-  }));
+function findClub(clubs, patterns) {
+  return clubs.find((club) => {
+    const name = clubKey(club.name);
+    return patterns.some((pattern) => name.includes(pattern));
+  }) || null;
 }
 
-function calculateSkills(rounds, clubs) {
-  const recentRounds = getRecentRounds(rounds);
-  const stats = recentRounds.map(roundStatistics);
-
-  const fir = average(stats.map((item) => item.fir));
-  const gir = average(stats.map((item) => item.gir));
-  const putts = average(stats.map((item) => item.putts));
-  const doubles = average(stats.map((item) => item.doubleBogeyPlus));
-
+function calculateAnalysis(rounds, clubs) {
+  const latest = recentRounds(rounds);
+  const fir = average(latest.map((round) => percentage(
+    round.firMade,
+    round.firPossible,
+    round.fir
+  )));
+  const gir = average(latest.map((round) => percentage(
+    round.girMade,
+    round.girPossible,
+    round.gir
+  )));
+  const putts = average(latest.map((round) => round.putts));
+  const doubles = average(latest.map((round) => round.doubleBogeyPlus));
   const driver = findClub(clubs, ["driver"]);
-  const validDispersion = clubs
-    .map((club) => Number(club.dispersion))
-    .filter(Number.isFinite);
-  const averageDispersion = average(validDispersion);
+  const dispersion = average(clubs.map((club) => club.dispersion));
 
-  const gaps = calculateBagGaps(clubs);
-  const problematicGaps = gaps.filter(
-    ({ gap }) => gap < 7 || gap > 20
-  ).length;
-
-  const drivingFromFir = fir === null ? 60 : fir;
-  const driverControl = driver && Number.isFinite(Number(driver.dispersion))
-    ? clamp(110 - Number(driver.dispersion) * 2)
-    : drivingFromFir;
+  const ordered = sortedClubs(clubs);
+  const gaps = ordered.slice(0, -1).map((club, index) => ({
+    from: club,
+    to: ordered[index + 1],
+    gap: Number(club.carry) - Number(ordered[index + 1].carry)
+  }));
+  const badGaps = gaps.filter(({ gap }) => gap < 7 || gap > 20).length;
 
   const driving = clamp(
-    drivingFromFir * 0.65 + driverControl * 0.35
+    (fir ?? 60) * 0.65 +
+    (driver && Number.isFinite(Number(driver.dispersion))
+      ? clamp(110 - Number(driver.dispersion) * 2)
+      : fir ?? 60) * 0.35
   );
 
-  const approach = gir === null
-    ? 60
-    : clamp(gir * 1.7);
-
-  const putting = putts === null
-    ? 60
-    : clamp(100 - Math.max(0, putts - 28) * 6);
-
-  const scoring = doubles === null
-    ? 60
-    : clamp(100 - doubles * 12);
-
-  const distanceControl = averageDispersion === null
-    ? 60
-    : clamp(110 - averageDispersion * 2.3);
-
-  const bagStructure = gaps.length
-    ? clamp(100 - problematicGaps * 14)
-    : 60;
+  const scores = {
+    driving: Math.round(driving),
+    approach: Math.round(gir === null ? 60 : clamp(gir * 1.7)),
+    putting: Math.round(putts === null ? 60 : clamp(100 - Math.max(0, putts - 28) * 6)),
+    scoring: Math.round(doubles === null ? 60 : clamp(100 - doubles * 12)),
+    distance: Math.round(dispersion === null ? 60 : clamp(110 - dispersion * 2.3)),
+    bag: Math.round(gaps.length ? clamp(100 - badGaps * 14) : 60)
+  };
 
   return {
-    recentRounds,
-    averages: {
-      fir,
-      gir,
-      putts,
-      doubles
-    },
-    scores: {
-      driving: Math.round(driving),
-      approach: Math.round(approach),
-      putting: Math.round(putting),
-      scoring: Math.round(scoring),
-      distanceControl: Math.round(distanceControl),
-      bagStructure: Math.round(bagStructure)
-    },
+    latest,
+    fir,
+    gir,
+    putts,
+    doubles,
     driver,
+    dispersion,
     gaps,
-    averageDispersion
+    scores
   };
 }
 
-function trainingScore(scores) {
-  return Math.round(
-    (
-      scores.driving +
-      scores.approach +
-      scores.putting +
-      scores.scoring +
-      scores.distanceControl +
-      scores.bagStructure
-    ) / 6
-  );
+function totalScore(scores) {
+  return Math.round(average(Object.values(scores)) ?? 0);
 }
 
-function scoreLabel(score) {
-  if (score >= 90) return "Fremragende";
-  if (score >= 80) return "Meget god";
-  if (score >= 70) return "God";
-  if (score >= 60) return "Udvikling";
-  return "Prioriteret fokus";
-}
-
-function createFocusAreas(analysis) {
-  const candidates = [
+function focusAreas(analysis) {
+  return [
     {
       key: "approach",
       title: "Approach-spil",
       score: analysis.scores.approach,
-      value: `GIR ${formatNumber(analysis.averages.gir, "%")}`,
-      reason: "Arbejd med startretning og carry-kontrol mod green."
+      value: `GIR ${format(analysis.gir, "%")}`,
+      reason: "Forbedr startretning og carry-kontrol mod green."
     },
     {
-      key: "driving",
+      key: "driver",
       title: "Driver-kontrol",
       score: analysis.scores.driving,
       value: analysis.driver
-        ? `${formatNumber(analysis.driver.dispersion, " m")} spredning`
-        : `FIR ${formatNumber(analysis.averages.fir, "%")}`,
-      reason: "Prioritér centertræf, tempo og en tydelig fairway-korridor."
+        ? `${format(analysis.driver.dispersion, " m")} spredning`
+        : `FIR ${format(analysis.fir, "%")}`,
+      reason: "Arbejd med centertræf, tempo og en tydelig fairway-korridor."
     },
     {
       key: "putting",
       title: "Putting",
       score: analysis.scores.putting,
-      value: `${formatNumber(analysis.averages.putts)} putts`,
-      reason: "Træn startlinje og hastighed fra 2-5 meter."
+      value: `${format(analysis.putts)} putts`,
+      reason: "Træn startlinje og hastighed fra 2 til 5 meter."
     },
     {
       key: "scoring",
       title: "Skadesbegrænsning",
       score: analysis.scores.scoring,
-      value: `${formatNumber(analysis.averages.doubles)} double+`,
-      reason: "Reducer store fejl med konservative mål og sikkert næste slag."
+      value: `${format(analysis.doubles)} double+`,
+      reason: "Reducer store fejl med konservative mål og et sikkert næste slag."
     },
     {
       key: "distance",
       title: "Længdekontrol",
-      score: analysis.scores.distanceControl,
-      value: `${formatNumber(analysis.averageDispersion, " m")} gennemsnitlig spredning`,
-      reason: "Træn tre længder med samme kølle og stabilt tempo."
+      score: analysis.scores.distance,
+      value: `${format(analysis.dispersion, " m")} spredning`,
+      reason: "Træn flere længder med samme kølle og et stabilt tempo."
     },
     {
       key: "bag",
       title: "Bag-gapping",
-      score: analysis.scores.bagStructure,
+      score: analysis.scores.bag,
       value: `${analysis.gaps.filter(({ gap }) => gap < 7 || gap > 20).length} problematiske gaps`,
-      reason: "Kalibrér mellem-slag eller undersøg behovet for en ekstra kølle."
+      reason: "Kalibrér mellem-slag omkring de største carry-gaps."
     }
-  ];
-
-  return candidates
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3);
+  ].sort((a, b) => a.score - b.score).slice(0, 3);
 }
 
-function sessionForFocus(focus, clubs) {
-  const sortedClubs = sortClubsByCarry(clubs);
-  const midIrons = sortedClubs.filter((club) => {
-    const carry = Number(club.carry);
-    return carry >= 120 && carry <= 180;
-  });
+const DRILLS = {
+  "130m": {
+    title: "130 m Challenge",
+    purpose: "Forbedre carry-præcision omkring 130 meter.",
+    method: [
+      "Slå 5 bolde mod et mål på 130 meter.",
+      "Brug samme pre-shot rutine på alle slag.",
+      "Fokusér på carry frem for totalafstand."
+    ],
+    kpis: ["Carry", "Side Offline", "Spredning"],
+    target: "Mindst 4 af 5 slag inden for ±5 meter."
+  },
+  "150m": {
+    title: "150 m Precision",
+    purpose: "Forbedre præcisionen med de længere approach-køller.",
+    method: [
+      "Slå 3 serier af 5 bolde mod 150 meter.",
+      "Skift målretning mellem hver serie.",
+      "Hold samme tempo og registrér køllevalg i TrackMan."
+    ],
+    kpis: ["Carry", "Offline", "Carry-variation"],
+    target: "Gennemsnitlig carry mellem 145 og 155 meter."
+  },
+  random: {
+    title: "Random Distance",
+    purpose: "Træne beslutning og længdekontrol uden gentagelse.",
+    method: [
+      "Skift mellem fem forskellige målafstande.",
+      "Slå kun én bold til hver afstand ad gangen.",
+      "Gennemfør tre runder uden at gentage samme afstand."
+    ],
+    kpis: ["Carry-afvigelse", "Køllevalg", "Spredning"],
+    target: "Mindst 60 % af slagene inden for ±7 meter."
+  },
+  fairway: {
+    title: "Fairway Challenge",
+    purpose: "Forbedre FIR og reducere driverens sidespredning.",
+    method: [
+      "Slå 24 drives mod en cirka 25 meter bred korridor.",
+      "Del træningen i seks serier af fire bolde.",
+      "Skift mål mellem serierne og behold samme rutine."
+    ],
+    kpis: ["Side Offline", "Spredning", "Carry"],
+    target: "Mindst 14 af 24 drives i korridoren."
+  },
+  dispersion: {
+    title: "Dispersion Challenge",
+    purpose: "Reducere variationen i både retning og længde.",
+    method: [
+      "Slå 12 bolde med samme kølle.",
+      "Brug et fast mål og samme tempo.",
+      "Fjern kun åbenlyse fejlmålinger, ikke dårlige slag."
+    ],
+    kpis: ["Side Offline", "Carry", "Total spredning"],
+    target: "Lavere spredning end køllens nuværende TrackMan-baseline."
+  },
+  tempo: {
+    title: "Tempo 70 %",
+    purpose: "Find et kontrolleret tee-slag med mindre spredning.",
+    method: [
+      "Slå 10 bolde med cirka 70 % oplevet tempo.",
+      "Sammenlign derefter med 10 normale drives.",
+      "Vurder forskellen i carry og dispersion."
+    ],
+    kpis: ["Carry", "Spredning", "Side Offline"],
+    target: "Reducer spredningen uden at miste mere end 10 % carry."
+  },
+  circle: {
+    title: "3 m Circle",
+    purpose: "Forbedre startlinje og sikkerhed fra tre meter.",
+    method: [
+      "Placér 8 bolde i en cirkel omkring hullet.",
+      "Alle bolde placeres cirka 3 meter fra hullet.",
+      "Gennemfør hele cirklen med samme rutine."
+    ],
+    kpis: ["Succesrate", "Startlinje", "Returlængde"],
+    target: "Hul mindst 5 af 8 putts."
+  },
+  clock: {
+    title: "Clock Drill",
+    purpose: "Forbedre korte putts fra forskellige fald og retninger.",
+    method: [
+      "Placér 8 bolde rundt om hullet som timer på et ur.",
+      "Start fra cirka 2 meter.",
+      "Begynd forfra efter en miss, hvis du vil øge presset."
+    ],
+    kpis: ["Succesrate", "Startlinje"],
+    target: "Hul 8 putts i træk."
+  },
+  gate: {
+    title: "Gate Drill",
+    purpose: "Forbedre putterhovedets startretning.",
+    method: [
+      "Lav en port med to tees lidt bredere end bolden.",
+      "Slå 20 putts gennem porten fra 2 meter.",
+      "Flyt porten tættere på bolden, når øvelsen bliver stabil."
+    ],
+    kpis: ["Startlinje", "Succesrate"],
+    target: "18 af 20 bolde gennem porten uden berøring."
+  },
+  nineball: {
+    title: "9-ball Challenge",
+    purpose: "Træne variation og beslutninger omkring green.",
+    method: [
+      "Spil 9 bolde fra forskellige lejer.",
+      "Skift mellem chip, pitch og bunker, hvis muligt.",
+      "Spil hver bold færdig i hul."
+    ],
+    kpis: ["Up & Down", "Nærhed til hul", "Antal slag"],
+    target: "Mindst 4 af 9 up-and-downs."
+  },
+  updown: {
+    title: "Up & Down",
+    purpose: "Forbedre sandsynligheden for at redde par omkring green.",
+    method: [
+      "Vælg seks forskellige positioner omkring green.",
+      "Spil én bold fra hver position og putt færdig.",
+      "Gentag for tre runder."
+    ],
+    kpis: ["Up & Down", "Første putts længde"],
+    target: "Mindst 9 af 18 up-and-downs."
+  },
+  landing: {
+    title: "Landing Zone",
+    purpose: "Forbedre kontrol af landingspunkt ved chip og pitch.",
+    method: [
+      "Markér en landingszone med håndklæde eller tees.",
+      "Slå 15 bolde fra samme sted.",
+      "Skift kølle og gentag fra en ny afstand."
+    ],
+    kpis: ["Landingspræcision", "Rullelængde"],
+    target: "10 af 15 bolde rammer landingszonen."
+  }
+};
 
-  if (focus.key === "approach") {
-    const targets = midIrons.length
-      ? midIrons.slice(-4).map((club) => Math.round(Number(club.carry)))
-      : [130, 140, 150, 160];
+function renderDrillInfo(drillId) {
+  const drill = DRILLS[drillId];
 
-    return {
-      title: "Approach-kontrol",
-      volume: "30 bolde",
-      description: `Slå 5-8 bolde mod ${targets.join(", ")} m. Registrér carry-afvigelse og sidespredning.`
-    };
+  if (!drill) {
+    return "";
   }
 
-  if (focus.key === "driving") {
-    return {
-      title: "Driver fairway challenge",
-      volume: "24 bolde",
-      description: "Spil seks serier af fire bolde mod en 25 meter bred korridor. Registrér fairway-træf og spredning."
-    };
-  }
-
-  if (focus.key === "putting") {
-    return {
-      title: "Startlinje og hastighed",
-      volume: "36 putts",
-      description: "12 putts fra 2 m, 12 fra 3 m og 12 fra 5 m. Registrér holed og længden på returen."
-    };
-  }
-
-  if (focus.key === "scoring") {
-    return {
-      title: "Bogey-stop challenge",
-      volume: "18 scenarier",
-      description: "Træn recovery-slag og konservative mål. Målet er at undgå double bogey efter et dårligt første slag."
-    };
-  }
-
-  if (focus.key === "distance") {
-    return {
-      title: "Tre-længde kontrol",
-      volume: "27 bolde",
-      description: "Vælg tre køller og slå 50 %, 75 % og 100 % slag. Registrér carry og variation."
-    };
-  }
-
-  return {
-    title: "Gap-kalibrering",
-    volume: "25 bolde",
-    description: "Træn de to køller omkring det største gap og find et kontrolleret mellem-slag."
-  };
-}
-
-function potentialStrokes(analysis) {
-  let potential = 0;
-
-  if (analysis.averages.gir !== null && analysis.averages.gir < 40) {
-    potential += 1.2;
-  }
-
-  if (analysis.averages.fir !== null && analysis.averages.fir < 55) {
-    potential += 0.8;
-  }
-
-  if (analysis.averages.putts !== null && analysis.averages.putts > 33) {
-    potential += 1;
-  }
-
-  if (analysis.averages.doubles !== null && analysis.averages.doubles > 2) {
-    potential += 0.8;
-  }
-
-  return roundOne(Math.max(0.5, potential));
-}
-
-function renderFocusAreas(focusAreas) {
   return `
-    <div class="training-focus-list">
-      ${focusAreas.map((focus, index) => `
-        <div class="training-focus-item">
-          <span class="training-focus-item__rank">${index + 1}</span>
-
-          <div class="training-focus-item__content">
-            <strong>${escapeHtml(focus.title)}</strong>
-            <span class="text-muted">${escapeHtml(focus.value)}</span>
-            <p>${escapeHtml(focus.reason)}</p>
-          </div>
-
-          <span class="training-score-badge">
-            ${focus.score}/100
-          </span>
+    <div class="drill-info" data-drill-info="${escapeHtml(drillId)}">
+      <div class="drill-info__header">
+        <div>
+          <p class="eyebrow">ØVELSESFORKLARING</p>
+          <h3>${escapeHtml(drill.title)}</h3>
         </div>
-      `).join("")}
+
+        <button
+          class="drill-info__close"
+          data-close-drill
+          type="button"
+          aria-label="Luk forklaring"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="drill-info__section">
+        <strong>Formål</strong>
+        <p>${escapeHtml(drill.purpose)}</p>
+      </div>
+
+      <div class="drill-info__section">
+        <strong>Sådan gør du</strong>
+        <ol>
+          ${drill.method.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+        </ol>
+      </div>
+
+      <div class="drill-info__section">
+        <strong>TrackMan / trænings-KPI'er</strong>
+        <div class="drill-kpi-list">
+          ${drill.kpis.map((kpi) => `<span>${escapeHtml(kpi)}</span>`).join("")}
+        </div>
+      </div>
+
+      <div class="status status--success">
+        <strong>Succesmål:</strong> ${escapeHtml(drill.target)}
+      </div>
+    </div>
+  `;
+}
+
+function renderDrillButton(id, label, extraClass = "") {
+  return `
+    <div class="drill-entry">
+      <button
+        class="button button--outline button--full drill-explain ${extraClass}"
+        data-drill-id="${escapeHtml(id)}"
+        type="button"
+        aria-expanded="false"
+      >
+        ${escapeHtml(label)}
+      </button>
+
+      <div class="drill-explanation-slot" data-drill-slot="${escapeHtml(id)}"></div>
     </div>
   `;
 }
@@ -383,8 +388,8 @@ function renderSkills(scores) {
     ["Approach", scores.approach],
     ["Putting", scores.putting],
     ["Scoring", scores.scoring],
-    ["Længdekontrol", scores.distanceControl],
-    ["Bag-struktur", scores.bagStructure]
+    ["Længdekontrol", scores.distance],
+    ["Bag-struktur", scores.bag]
   ];
 
   return `
@@ -395,131 +400,85 @@ function renderSkills(scores) {
             <strong>${escapeHtml(label)}</strong>
             <span>${value}/100</span>
           </div>
-
-          <div class="skill-bar" aria-label="${escapeHtml(label)} ${value} af 100">
-            <span style="width:${clamp(value)}%"></span>
-          </div>
+          <div class="skill-bar"><span style="width:${value}%"></span></div>
         </div>
       `).join("")}
     </div>
   `;
 }
 
-function renderWeeklyPlan(focusAreas, clubs) {
+function renderFocus(focus) {
   return `
-    <div class="weekly-plan-grid">
-      ${focusAreas.map((focus, index) => {
-        const session = sessionForFocus(focus, clubs);
-
-        return `
-          <article class="training-session">
-            <p class="eyebrow">SESSION ${index + 1}</p>
-            <h3>${escapeHtml(session.title)}</h3>
-            <strong>${escapeHtml(session.volume)}</strong>
-            <p>${escapeHtml(session.description)}</p>
-
-            <button
-              class="button button--outline drill"
-              type="button"
-            >
-              Markér udført
-            </button>
-          </article>
-        `;
-      }).join("")}
+    <div class="training-focus-list">
+      ${focus.map((item, index) => `
+        <div class="training-focus-item">
+          <span class="training-focus-item__rank">${index + 1}</span>
+          <div class="training-focus-item__content">
+            <strong>${escapeHtml(item.title)}</strong>
+            <span class="text-muted">${escapeHtml(item.value)}</span>
+            <p>${escapeHtml(item.reason)}</p>
+          </div>
+          <span class="training-score-badge">${item.score}/100</span>
+        </div>
+      `).join("")}
     </div>
   `;
 }
 
 function approachTargets(clubs) {
-  const valid = sortClubsByCarry(clubs)
-    .filter((club) => {
-      const carry = Number(club.carry);
-      return carry >= 100 && carry <= 190;
-    });
+  const values = sortedClubs(clubs)
+    .map((club) => Number(club.carry))
+    .filter((carry) => carry >= 100 && carry <= 190)
+    .map((carry) => Math.round(carry / 5) * 5);
 
-  if (!valid.length) {
-    return [120, 130, 140, 150, 160];
-  }
-
-  const unique = [...new Set(
-    valid.map((club) => Math.round(Number(club.carry) / 5) * 5)
-  )];
-
-  return unique.slice(0, 6).sort((a, b) => a - b);
+  return values.length
+    ? [...new Set(values)].sort((a, b) => a - b).slice(0, 6)
+    : [120, 130, 140, 150, 160];
 }
 
-function renderApproachCockpit(clubs) {
-  const targets = approachTargets(clubs);
+function renderApproach(clubs) {
+  const ordered = sortedClubs(clubs);
 
   return `
     <div class="approach-target-grid">
-      ${targets.map((distance) => {
-        const nearest = sortClubsByCarry(clubs)
-          .sort(
-            (a, b) =>
-              Math.abs(Number(a.carry) - distance) -
-              Math.abs(Number(b.carry) - distance)
-          )[0];
+      ${approachTargets(clubs).map((distance) => {
+        const nearest = [...ordered].sort(
+          (a, b) =>
+            Math.abs(Number(a.carry) - distance) -
+            Math.abs(Number(b.carry) - distance)
+        )[0];
+        const id = distance <= 135 ? "130m" : distance <= 155 ? "150m" : "random";
 
         return `
-          <button
-            class="approach-target drill"
-            type="button"
-          >
+          <div class="approach-target-card">
             <strong>${distance} m</strong>
             <span>${nearest ? escapeHtml(nearest.name) : "Vælg kølle"}</span>
             <small>5 bolde · ±5 m</small>
-          </button>
+            ${renderDrillButton(id, "Vis øvelse")}
+          </div>
         `;
       }).join("")}
     </div>
   `;
 }
 
-function wedgeClubs(clubs) {
-  const wedgePatterns = [
-    "pw",
-    "pitching",
-    "gw",
-    "gap",
-    "aw",
-    "approachwedge",
-    "sw",
-    "sand",
-    "lw",
-    "lob"
-  ];
-
-  return sortClubsByCarry(clubs).filter((club) => {
-    const name = clubNameKey(club.name);
-    return wedgePatterns.some((pattern) => name.includes(pattern));
-  });
-}
-
 function renderWedgeMatrix(clubs) {
-  const wedges = wedgeClubs(clubs);
+  const patterns = ["pw", "pitching", "gw", "gap", "aw", "sw", "sand", "lw", "lob"];
+  const wedges = sortedClubs(clubs).filter((club) =>
+    patterns.some((pattern) => clubKey(club.name).includes(pattern))
+  );
 
   if (!wedges.length) {
-    return `
-      <div class="status status--info">
-        Importér TrackMan-data for PW, GW, SW eller LW for at bygge wedge-matricen.
-      </div>
-    `;
+    return `<div class="status status--info">Importér TrackMan-data for wedges for at bygge matricen.</div>`;
   }
 
   return `
     <div class="wedge-matrix">
       <div class="wedge-matrix__header">
-        <span>Kølle</span>
-        <span>50 %</span>
-        <span>75 %</span>
-        <span>100 %</span>
+        <span>Kølle</span><span>50 %</span><span>75 %</span><span>100 %</span>
       </div>
-
       ${wedges.map((club) => {
         const carry = Number(club.carry);
-
         return `
           <div class="wedge-matrix__row">
             <strong>${escapeHtml(club.name)}</strong>
@@ -533,77 +492,12 @@ function renderWedgeMatrix(clubs) {
   `;
 }
 
-function renderDriverControl(driver, averageFir) {
-  if (!driver) {
-    return `
-      <div class="status status--info">
-        Ingen Driver blev fundet i TrackMan-data.
-      </div>
-    `;
-  }
-
-  const dispersion = Number(driver.dispersion);
-  const target = 20;
-  const status = Number.isFinite(dispersion) && dispersion <= target
-    ? "På mål"
-    : "Fokusområde";
-
-  return `
-    <div class="metric-grid metric-grid--3">
-      ${metric("Carry", `${Math.round(Number(driver.carry))} m`)}
-      ${metric("Spredning", Number.isFinite(dispersion) ? `${Math.round(dispersion)} m` : "–")}
-      ${metric("FIR", formatNumber(averageFir, "%"))}
-    </div>
-
-    <div class="driver-control-target">
-      <div>
-        <strong>Mål for spredning</strong>
-        <span>&lt; ${target} m</span>
-      </div>
-
-      <span class="training-score-badge">${status}</span>
-    </div>
-
-    <button
-      class="button button--outline button--full drill"
-      type="button"
-    >
-      Start 24-boldes fairway challenge
-    </button>
-  `;
-}
-
-function renderCoach(analysis, focusAreas) {
-  const mainFocus = focusAreas[0];
-  const potential = potentialStrokes(analysis);
-  const session = sessionForFocus(mainFocus, []);
-
-  return `
-    <div class="coach-summary">
-      <div class="coach-summary__lead">
-        <p class="eyebrow">STØRSTE POTENTIALE</p>
-        <h3>${escapeHtml(mainFocus.title)}</h3>
-        <p>${escapeHtml(mainFocus.reason)}</p>
-      </div>
-
-      <div class="metric-grid">
-        ${metric("Potentiel gevinst", `${String(potential).replace(".", ",")} slag/runde`)}
-        ${metric("Datagrundlag", `${analysis.recentRounds.length} runder`)}
-      </div>
-
-      <div class="status status--info">
-        Næste anbefaling: ${escapeHtml(session.title)}. ${escapeHtml(session.description)}
-      </div>
-    </div>
-  `;
-}
-
-function renderTrainingLibrary() {
+function renderLibrary() {
   const groups = [
-    ["Approach", ["130 m Challenge", "150 m Precision", "Random Distance"]],
-    ["Driver", ["Fairway Challenge", "Dispersion Challenge", "Tempo 70 %"]],
-    ["Putting", ["3 m Circle", "Clock Drill", "Gate Drill"]],
-    ["Short Game", ["9-ball Challenge", "Up & Down", "Landing Zone"]]
+    ["Approach", [["130m", "130 m Challenge"], ["150m", "150 m Precision"], ["random", "Random Distance"]]],
+    ["Driver", [["fairway", "Fairway Challenge"], ["dispersion", "Dispersion Challenge"], ["tempo", "Tempo 70 %"]]],
+    ["Putting", [["circle", "3 m Circle"], ["clock", "Clock Drill"], ["gate", "Gate Drill"]]],
+    ["Short Game", [["nineball", "9-ball Challenge"], ["updown", "Up & Down"], ["landing", "Landing Zone"]]]
   ];
 
   return `
@@ -611,15 +505,7 @@ function renderTrainingLibrary() {
       ${groups.map(([title, drills]) => `
         <section class="training-library-group">
           <h3>${escapeHtml(title)}</h3>
-
-          ${drills.map((drill) => `
-            <button
-              class="button button--outline button--full drill"
-              type="button"
-            >
-              ${escapeHtml(drill)}
-            </button>
-          `).join("")}
+          ${drills.map(([id, label]) => renderDrillButton(id, label)).join("")}
         </section>
       `).join("")}
     </div>
@@ -627,18 +513,12 @@ function renderTrainingLibrary() {
 }
 
 export function trainingPage(state) {
-  const rounds = Array.isArray(state.rounds)
-    ? state.rounds
-    : [];
-
-  const clubs = Array.isArray(state.clubs)
-    ? state.clubs
-    : [];
-
-  const analysis = calculateSkills(rounds, clubs);
-  const score = trainingScore(analysis.scores);
-  const focusAreas = createFocusAreas(analysis);
-  const mainFocus = focusAreas[0];
+  const rounds = Array.isArray(state.rounds) ? state.rounds : [];
+  const clubs = Array.isArray(state.clubs) ? state.clubs : [];
+  const analysis = calculateAnalysis(rounds, clubs);
+  const score = totalScore(analysis.scores);
+  const focus = focusAreas(analysis);
+  const driver = analysis.driver;
 
   return `
     <div class="page training-cockpit">
@@ -653,133 +533,124 @@ export function trainingPage(state) {
           <div>
             <p class="eyebrow">TRÆNINGSSCORE</p>
             <div class="kpi">${score}/100</div>
-            <p class="text-muted">${scoreLabel(score)}</p>
+            <p class="text-muted">Datagrundlag: ${analysis.latest.length} runder</p>
           </div>
-
           <div class="training-score-focus">
             <span>Vigtigste fokus</span>
-            <strong>${escapeHtml(mainFocus.title)}</strong>
-            <small>${escapeHtml(mainFocus.value)}</small>
+            <strong>${escapeHtml(focus[0].title)}</strong>
+            <small>${escapeHtml(focus[0].value)}</small>
           </div>
         </div>
-
         <div class="metric-grid metric-grid--3">
-          ${metric("FIR", formatNumber(analysis.averages.fir, "%"))}
-          ${metric("GIR", formatNumber(analysis.averages.gir, "%"))}
-          ${metric("Putts", formatNumber(analysis.averages.putts))}
+          ${metric("FIR", format(analysis.fir, "%"))}
+          ${metric("GIR", format(analysis.gir, "%"))}
+          ${metric("Putts", format(analysis.putts))}
         </div>
       `, true)}
 
       ${card(`
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">PRIORITERING</p>
-            <h2 class="card-title">Top 3 fokusområder</h2>
-          </div>
-
+          <div><p class="eyebrow">PRIORITERING</p><h2 class="card-title">Top 3 fokusområder</h2></div>
           ${sourceBadge("Garmin")}
         </div>
-
-        ${renderFocusAreas(focusAreas)}
+        ${renderFocus(focus)}
       `)}
 
       ${card(`
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">KOMPETENCEPROFIL</p>
-            <h2 class="card-title">Skills Dashboard</h2>
-          </div>
-        </div>
-
+        <p class="eyebrow">KOMPETENCEPROFIL</p>
+        <h2 class="card-title">Skills Dashboard</h2>
         ${renderSkills(analysis.scores)}
       `)}
 
       ${card(`
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">DENNE UGE</p>
-            <h2 class="card-title">Tre prioriterede sessioner</h2>
-          </div>
+          <div><p class="eyebrow">APPROACH</p><h2 class="card-title">Approach Cockpit</h2></div>
+          ${sourceBadge("TrackMan")}
         </div>
-
-        ${renderWeeklyPlan(focusAreas, clubs)}
+        <p class="text-muted">Afstandene er afledt af din aktuelle bag. Klik på Vis øvelse for en kort instruktion.</p>
+        ${renderApproach(clubs)}
       `)}
 
       ${card(`
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">APPROACH</p>
-            <h2 class="card-title">Approach Cockpit</h2>
-          </div>
-
+          <div><p class="eyebrow">WEDGES</p><h2 class="card-title">Wedge Matrix</h2></div>
           ${sourceBadge("TrackMan")}
         </div>
-
-        <p class="text-muted">
-          Målafstandene er afledt af carry-data i bagen. Hver challenge består af fem bolde med et mål på ±5 meter.
-        </p>
-
-        ${renderApproachCockpit(clubs)}
-      `)}
-
-      ${card(`
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">WEDGES</p>
-            <h2 class="card-title">Wedge Matrix</h2>
-          </div>
-
-          ${sourceBadge("TrackMan")}
-        </div>
-
-        <p class="text-muted">
-          50 % og 75 % er planlægningsafstande beregnet fra fuld carry. Kalibrér dem med rigtige TrackMan-slag.
-        </p>
-
         ${renderWedgeMatrix(clubs)}
       `)}
 
       ${card(`
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">DRIVER</p>
-            <h2 class="card-title">Driver Control</h2>
-          </div>
-
+          <div><p class="eyebrow">DRIVER</p><h2 class="card-title">Driver Control</h2></div>
           ${sourceBadge("TrackMan")}
         </div>
-
-        ${renderDriverControl(
-          analysis.driver,
-          analysis.averages.fir
-        )}
-      `)}
-
-      ${card(`
-        <p class="eyebrow">GOLF GENIE COACH</p>
-        <h2 class="card-title">Databaseret anbefaling</h2>
-
-        ${renderCoach(analysis, focusAreas)}
+        <div class="metric-grid metric-grid--3">
+          ${metric("Carry", driver ? format(driver.carry, " m") : "–")}
+          ${metric("Spredning", driver ? format(driver.dispersion, " m") : "–")}
+          ${metric("FIR", format(analysis.fir, "%"))}
+        </div>
+        ${renderDrillButton("fairway", "Vis Fairway Challenge")}
       `)}
 
       ${card(`
         <p class="eyebrow">ØVELSESBIBLIOTEK</p>
-        <h2 class="card-title">Vælg en ekstra challenge</h2>
-
-        ${renderTrainingLibrary()}
+        <h2 class="card-title">Klik på en øvelse for at se forklaringen</h2>
+        <p class="text-muted">Der skal ikke indtastes resultater. Brug instruktionen på træningsanlægget og importér senere TrackMan-rapporten.</p>
+        ${renderLibrary()}
       `)}
 
-      ${rounds.length === 0 ? `
-        <div class="status status--info">
-          Importér Garmin-runder for at gøre FIR-, GIR-, putting- og scoringsanalysen personlig.
-        </div>
-      ` : ""}
-
-      ${clubs.length === 0 ? `
-        <div class="status status--info">
-          Importér TrackMan-data for at gøre approach-, wedge- og drivertræningen personlig.
-        </div>
-      ` : ""}
+      ${rounds.length === 0
+        ? `<div class="status status--info">Importér Garmin-runder for personlig FIR-, GIR-, putting- og scoringsanalyse.</div>`
+        : ""}
+      ${clubs.length === 0
+        ? `<div class="status status--info">Importér TrackMan-data for personlige afstande og køllevalg.</div>`
+        : ""}
     </div>
   `;
+}
+
+export function bindTrainingDrillCards(root = document) {
+  root.querySelectorAll("[data-drill-id]").forEach((button) => {
+    button.onclick = () => {
+      const drillId = button.dataset.drillId;
+      const entry = button.closest(".drill-entry");
+      const slot = entry?.querySelector(`[data-drill-slot="${drillId}"]`);
+
+      if (!slot) {
+        return;
+      }
+
+      const isOpen = slot.childElementCount > 0;
+
+      root.querySelectorAll(".drill-explanation-slot").forEach((otherSlot) => {
+        otherSlot.innerHTML = "";
+      });
+
+      root.querySelectorAll("[data-drill-id]").forEach((otherButton) => {
+        otherButton.setAttribute("aria-expanded", "false");
+      });
+
+      if (!isOpen) {
+        slot.innerHTML = renderDrillInfo(drillId);
+        button.setAttribute("aria-expanded", "true");
+        slot.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    };
+  });
+
+  root.querySelectorAll("[data-close-drill]").forEach((button) => {
+    button.onclick = () => {
+      const info = button.closest(".drill-info");
+      const slot = info?.parentElement;
+      const entry = slot?.closest(".drill-entry");
+      const trigger = entry?.querySelector("[data-drill-id]");
+
+      if (slot) {
+        slot.innerHTML = "";
+      }
+
+      trigger?.setAttribute("aria-expanded", "false");
+      trigger?.focus();
+    };
+  });
 }
