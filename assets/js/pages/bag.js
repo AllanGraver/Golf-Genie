@@ -5,13 +5,25 @@ const escapeHtml = value => String(value ?? "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;");
-const meters = value => Number.isFinite(Number(value)) ? `${Math.round(Number(value))} m` : "–";
+
+const meters = value => Number.isFinite(Number(value))
+  ? `${Math.round(Number(value))} m`
+  : "–";
+
 const equipmentTitle = (profileClub, fallback) => profileClub
-  ? [profileClub.club, [profileClub.brand, profileClub.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ")
+  ? [
+      profileClub.club,
+      [profileClub.brand, profileClub.model].filter(Boolean).join(" ")
+    ].filter(Boolean).join(" · ")
   : fallback;
 
 function matchClubs(trackmanClubs, profileBag) {
-  const profileById = new Map(profileBag.map(item => [item.clubId || canonicalClub(item.club).clubId, item]));
+  const profileById = new Map(
+    profileBag.map(item => [
+      item.clubId || canonicalClub(item.club).clubId,
+      item
+    ])
+  );
   const used = new Set();
   const clubs = trackmanClubs.map((club, originalIndex) => {
     const canonical = canonicalClub(club.clubId || club.name);
@@ -31,7 +43,9 @@ function matchClubs(trackmanClubs, profileBag) {
     clubs,
     matched: clubs.filter(club => club.profileClub),
     trackmanOnly: clubs.filter(club => !club.profileClub),
-    profileOnly: profileBag.filter(item => !used.has(item.clubId || canonicalClub(item.club).clubId))
+    profileOnly: profileBag.filter(item =>
+      !used.has(item.clubId || canonicalClub(item.club).clubId)
+    )
   };
 }
 
@@ -43,7 +57,9 @@ function matchStatus(match) {
       ${metric("Kun TrackMan", match.trackmanOnly.length)}
       ${metric("Uden TrackMan", match.profileOnly.length)}
     </div>
-    <button class="button button--outline button--full" data-page="profile" type="button">Rediger Min Bag</button>
+    <button class="button button--outline button--full" data-page="profile" type="button">
+      Rediger Min Bag
+    </button>
   `);
 }
 
@@ -73,6 +89,58 @@ function distanceLadder(clubs) {
   `;
 }
 
+function clubNavigator(clubs, selectedIndex) {
+  return `
+    <div class="club-navigator" aria-label="Vælg kølle">
+      <div class="club-navigator__controls">
+        <button id="previousClub" class="button button--outline club-navigator__arrow" type="button" ${selectedIndex === 0 ? "disabled" : ""} aria-label="Forrige kølle">‹</button>
+        <div class="club-navigator__position">
+          <strong>${selectedIndex + 1} af ${clubs.length}</strong>
+          <span>Swipe eller vælg en kølle</span>
+        </div>
+        <button id="nextClub" class="button button--outline club-navigator__arrow" type="button" ${selectedIndex === clubs.length - 1 ? "disabled" : ""} aria-label="Næste kølle">›</button>
+      </div>
+      <div class="club-navigator__tabs" data-club-tabs>
+        ${clubs.map((club, index) => `
+          <button class="club-nav-tab ${index === selectedIndex ? "club-nav-tab--active" : ""}" data-club="${club.originalIndex}" type="button" aria-current="${index === selectedIndex ? "true" : "false"}">
+            <strong>${escapeHtml(club.profileClub?.club || club.canonicalName)}</strong>
+            <span>${meters(club.carry)}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function bindSwipeNavigation() {
+  const detail = document.querySelector("[data-club-detail]");
+  if (!detail || detail.dataset.swipeBound === "true") return;
+  detail.dataset.swipeBound = "true";
+  let startX = null;
+  let startY = null;
+
+  detail.addEventListener("touchstart", event => {
+    const touch = event.changedTouches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+
+  detail.addEventListener("touchend", event => {
+    if (startX === null || startY === null) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    startX = null;
+    startY = null;
+    if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    if (deltaX < 0) document.getElementById("nextClub")?.click();
+    else document.getElementById("previousClub")?.click();
+  }, { passive: true });
+
+  const activeTab = document.querySelector(".club-nav-tab--active");
+  activeTab?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+}
+
 function bagStyles() {
   return `
     <style>
@@ -90,6 +158,19 @@ function bagStyles() {
       .gap-row__identity strong{line-height:1.4}
       .gap-row__identity .text-muted{display:block;line-height:1.4}
       .gap-row__value{min-width:90px;text-align:right;font-size:16px}
+      .club-detail-card{touch-action:pan-y}
+      .club-detail__equipment{display:grid;gap:4px;margin:-2px 0 18px;color:var(--color-muted)}
+      .club-detail__equipment strong{color:var(--color-text);font-size:15px}
+      .club-navigator{display:grid;gap:13px;margin-top:18px;padding-top:17px;border-top:1px solid var(--color-border)}
+      .club-navigator__controls{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:12px}
+      .club-navigator__arrow{width:48px;height:44px;padding:0;font-size:26px}
+      .club-navigator__position{display:grid;place-items:center;gap:2px;text-align:center}
+      .club-navigator__position span{color:var(--color-muted);font-size:11px}
+      .club-navigator__tabs{display:flex;gap:9px;overflow-x:auto;padding:3px 2px 10px;scroll-snap-type:x mandatory;scrollbar-width:thin;overscroll-behavior-x:contain}
+      .club-nav-tab{flex:0 0 auto;min-width:96px;padding:10px 12px;border:1px solid var(--color-border);border-radius:13px;background:#fff;color:var(--color-text);text-align:left;scroll-snap-align:center}
+      .club-nav-tab strong,.club-nav-tab span{display:block}
+      .club-nav-tab span{margin-top:4px;color:var(--color-muted);font-size:11px}
+      .club-nav-tab--active{border-color:var(--color-primary-700);background:#ecfdf5;box-shadow:0 0 0 2px rgba(4,120,87,.08)}
 
       @media(max-width:700px){
         .distance-ladder__row{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px}
@@ -99,6 +180,9 @@ function bagStyles() {
         .gap-row{grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px}
         .gap-row__identity{padding-right:6px}
         .gap-row__value{min-width:60px}
+        .club-navigator__controls{grid-template-columns:44px 1fr 44px;gap:8px}
+        .club-navigator__arrow{width:44px;height:42px}
+        .club-nav-tab{min-width:88px}
       }
     </style>
   `;
@@ -114,8 +198,15 @@ export function bagPage(state) {
     to: clubs[index + 1],
     gap: Number(from.carry) - Number(clubs[index + 1].carry)
   }));
-  const selectedIndex = Math.min(Math.max(0, Number(state.clubIndex || 0)), Math.max(0, match.clubs.length - 1));
-  const selected = match.clubs[selectedIndex];
+
+  const selectedOriginalIndex = Math.min(
+    Math.max(0, Number(state.clubIndex || 0)),
+    Math.max(0, match.clubs.length - 1)
+  );
+  const selected = match.clubs[selectedOriginalIndex];
+  const selectedSortedIndex = Math.max(0, clubs.findIndex(club => club.originalIndex === selectedOriginalIndex));
+
+  queueMicrotask(bindSwipeNavigation);
 
   return `
     ${bagStyles()}
@@ -143,16 +234,33 @@ export function bagPage(state) {
         </div>
       `) : ""}
       ${selected ? card(`
-        <div class="section-heading">
-          <h2 class="card-title">${escapeHtml(selected.name)}</h2>
-          ${sourceBadge("TrackMan")}
+        <div class="club-detail-card" data-club-detail>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">KØLLEDETALJER</p>
+              <h2 class="card-title">${escapeHtml(selected.profileClub?.club || selected.canonicalName)}</h2>
+            </div>
+            ${sourceBadge("TrackMan")}
+          </div>
+          ${selected.profileClub ? `
+            <div class="club-detail__equipment">
+              <strong>${escapeHtml([selected.profileClub.brand, selected.profileClub.model].filter(Boolean).join(" ") || "Udstyr ikke angivet")}</strong>
+              <span>${selected.profileClub.loft != null ? `${selected.profileClub.loft}°` : "Loft ikke angivet"}${selected.profileClub.year ? ` · ${escapeHtml(selected.profileClub.year)}` : ""}</span>
+            </div>
+          ` : ""}
+          <div class="metric-grid metric-grid--3">
+            ${metric("Carry", meters(selected.carry))}
+            ${metric("Total", meters(selected.total))}
+            ${metric("Spredning", meters(selected.dispersion))}
+          </div>
+          <div class="metric-grid metric-grid--3">
+            ${metric("Slag", selected.shots || 0)}
+            ${metric("Benchmark", meters(selected.benchmark))}
+            ${metric("TrackMan-navn", escapeHtml(selected.trackmanName))}
+          </div>
+          ${clubNavigator(clubs, selectedSortedIndex)}
         </div>
-        <div class="metric-grid metric-grid--3">
-          ${metric("Carry", meters(selected.carry))}
-          ${metric("Total", meters(selected.total))}
-          ${metric("Spredning", meters(selected.dispersion))}
-        </div>
-      `) : ""}
+      `, false, "club-detail-shell") : ""}
     </div>
   `;
 }
