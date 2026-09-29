@@ -14,6 +14,79 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+
+function normalizeClubToken(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replaceAll("æ", "ae")
+    .replaceAll("ø", "oe")
+    .replaceAll("å", "aa")
+    .replace(/driver|drv|1wood|1w/g, "driver")
+    .replace(/pitchingwedge|pitching|pw/g, "pw")
+    .replace(/gapwedge|gap|gw/g, "gw")
+    .replace(/approachwedge|approach|aw/g, "aw")
+    .replace(/sandwedge|sand|sw/g, "sw")
+    .replace(/lobwedge|lob|lw/g, "lw")
+    .replace(/putter/g, "putter")
+    .replace(/([2-9])iron/g, "$1i")
+    .replace(/iron([2-9])/g, "$1i")
+    .replace(/([2-9])wood/g, "$1w")
+    .replace(/wood([2-9])/g, "$1w")
+    .replace(/([2-6])hybrid/g, "$1h")
+    .replace(/hybrid([2-6])/g, "$1h")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function equipmentTitle(profileClub, fallbackName) {
+  if (!profileClub) return fallbackName;
+  const equipment = [profileClub.brand, profileClub.model].filter(Boolean).join(" ");
+  return equipment ? `${profileClub.club} · ${equipment}` : profileClub.club;
+}
+
+function matchProfileBag(trackmanClubs, profileBag) {
+  const registered = Array.isArray(profileBag) ? profileBag : [];
+  const usedProfileIds = new Set();
+  const clubs = trackmanClubs.map((club, originalIndex) => {
+    const trackmanKey = normalizeClubToken(club.name);
+    const match = registered.find((item) =>
+      !usedProfileIds.has(item.id) && normalizeClubToken(item.club) === trackmanKey
+    ) || null;
+    if (match) usedProfileIds.add(match.id);
+    return {
+      ...club,
+      originalIndex,
+      trackmanName: club.name,
+      profileClub: match,
+      matchStatus: match ? "matched" : "trackman-only",
+      name: equipmentTitle(match, club.name)
+    };
+  });
+  const profileOnly = registered.filter((item) => !usedProfileIds.has(item.id));
+  return {
+    clubs,
+    matchedCount: clubs.filter((club) => club.matchStatus === "matched").length,
+    trackmanOnly: clubs.filter((club) => club.matchStatus === "trackman-only"),
+    profileOnly
+  };
+}
+
+function renderBagMatchStatus(match) {
+  return card(`
+    <div class="section-heading">
+      <div><p class="eyebrow">MIN BAG + TRACKMAN</p><h2 class="card-title">Matchstatus</h2></div>
+      <span class="badge">${match.matchedCount} matchet</span>
+    </div>
+    <div class="metric-grid metric-grid--3">
+      ${metric("Matchet", match.matchedCount)}
+      ${metric("Kun TrackMan", match.trackmanOnly.length)}
+      ${metric("Uden TrackMan", match.profileOnly.length)}
+    </div>
+    ${match.trackmanOnly.length ? `<div class="status status--warning"><strong>Ikke registreret i Min Bag:</strong> ${match.trackmanOnly.map((club) => escapeHtml(club.trackmanName)).join(", ")}</div>` : ""}
+    ${match.profileOnly.length ? `<div class="status status--info"><strong>Mangler TrackMan-data:</strong> ${match.profileOnly.map((club) => escapeHtml(equipmentTitle(club, club.club))).join(", ")}</div>` : ""}
+    <button class="button button--outline button--full" data-page="profile" type="button">Rediger Min Bag i Profil</button>
+  `);
+}
+
 function toFiniteNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -400,56 +473,34 @@ function renderAdvisor(items) {
 }
 
 export function bagPage(state) {
-  const rawClubs = Array.isArray(state.clubs)
-    ? state.clubs
-    : [];
+  const rawClubs = Array.isArray(state.clubs) ? state.clubs : [];
+  const profileBag = Array.isArray(state.profile?.bag) ? state.profile.bag : [];
+  const match = matchProfileBag(rawClubs, profileBag);
 
   if (!rawClubs.length) {
     return `
       <div class="page">
-        ${pageHeader(
-          "TRACKMAN",
-          "Bag IQ",
-          "Ingen TrackMan-data importeret endnu"
-        )}
-
-        ${card(`
+        ${pageHeader("BAG IQ", "Bag IQ", profileBag.length ? "Din bag er registreret, men mangler TrackMan-data" : "Ingen køller registreret endnu")}
+        ${profileBag.length ? renderBagMatchStatus(match) : card(`
           <div class="empty-state">
-            <h2 class="card-title">
-              Importér dine køller
-            </h2>
-
-            <p class="text-muted">
-              Importér en TrackMan CSV-fil for at se carry,
-              afstandsgaps, spredning og længdekontrol.
-            </p>
-
-            <button
-              class="button button--accent button--full"
-              data-page="home"
-              type="button"
-            >
-              Gå til Mit Spil
-            </button>
+            <h2 class="card-title">Registrér din bag</h2>
+            <p class="text-muted">Start i Profil med at registrere kølletype, mærke og model. Importér derefter TrackMan CSV fra Mit Spil.</p>
+            <button class="button button--accent button--full" data-page="profile" type="button">Gå til Profil</button>
           </div>
         `)}
+        <button class="button button--outline button--full" data-page="home" type="button">Gå til Mit Spil og importér TrackMan</button>
       </div>
     `;
   }
 
-  const clubs = sortClubsByCarry(
-    rawClubs.map((club, originalIndex) => ({
-      ...club,
-      originalIndex
-    }))
-  );
+  const clubs = sortClubsByCarry(match.clubs);
 
   const selectedIndex = Math.min(
     Math.max(0, Number(state.clubIndex || 0)),
     rawClubs.length - 1
   );
 
-  const selectedClub = rawClubs[selectedIndex];
+  const selectedClub = match.clubs[selectedIndex];
   const selectedDelta =
     Number(selectedClub.carry || 0) -
     Number(selectedClub.benchmark || 0);
@@ -486,6 +537,7 @@ export function bagPage(state) {
         "Bag IQ",
         "Carry-gaps, afstandsdækning og længdekontrol på samme side."
       )}
+      ${renderBagMatchStatus(match)}
 
       ${card(`
         <div class="bag-score-header">
@@ -639,7 +691,7 @@ export function bagPage(state) {
         </div>
 
         <div class="scroll-row">
-          ${rawClubs.map((club, index) => `
+          ${match.clubs.map((club, index) => `
             <button
               class="club-tab ${index === selectedIndex ? "club-tab--active" : ""}"
               data-club="${index}"
