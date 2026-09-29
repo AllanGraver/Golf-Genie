@@ -14,14 +14,26 @@ export const DEFAULT_PROFILE = {
 };
 
 function clubIdFromName(value) {
-  const raw=String(value||"").trim().toLowerCase();
-  if (/^(iron|wood|hybrid)-[2-9]$/.test(raw) || /^wedge-(pw|gw|aw|sw|lw)$/.test(raw) || ["driver","putter"].includes(raw)) return raw;
+  let raw=String(value||"").trim().toLowerCase();
+  for(let i=0;i<12;i+=1){const next=raw.replace(/^other(?:-|_)?/i,"");if(next===raw)break;raw=next;}
+  if(/^(iron|wood|hybrid)-[2-9]$/.test(raw)||/^wedge-(pw|gw|aw|sw|lw)$/.test(raw)||["driver","putter"].includes(raw))return raw;
   const token=raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
-  if (/^(driver|drv|1w|1wood)$/.test(token)) return "driver"; if (/^(putter|pt)$/.test(token)) return "putter";
-  const w={pw:"wedge-pw",pitchingwedge:"wedge-pw",gw:"wedge-gw",gapwedge:"wedge-gw",aw:"wedge-aw",approachwedge:"wedge-aw",sw:"wedge-sw",sandwedge:"wedge-sw",lw:"wedge-lw",lobwedge:"wedge-lw"}; if(w[token]) return w[token];
-  let m=token.match(/^([2-9])(?:i|iron|jern)$/)||token.match(/^(?:iron|jern)([2-9])$/); if(m)return `iron-${m[1]}`;
-  m=token.match(/^([2-9])(?:w|wood)$/)||token.match(/^(?:wood)([2-9])$/); if(m)return `wood-${m[1]}`;
-  m=token.match(/^([2-6])(?:h|hybrid)$/)||token.match(/^(?:hybrid)([2-6])$/); if(m)return `hybrid-${m[1]}`; return `other-${token}`;
+  if(/^(driver|drv|1w|1wood)$/.test(token))return "driver";if(/^(putter|pt)$/.test(token))return "putter";
+  const w={pw:"wedge-pw",pitchingwedge:"wedge-pw",wedgepw:"wedge-pw",gw:"wedge-gw",gapwedge:"wedge-gw",wedgegw:"wedge-gw",aw:"wedge-aw",approachwedge:"wedge-aw",wedgeaw:"wedge-aw",sw:"wedge-sw",sandwedge:"wedge-sw",wedgesw:"wedge-sw",lw:"wedge-lw",lobwedge:"wedge-lw",wedgelw:"wedge-lw"};if(w[token])return w[token];
+  let m=token.match(/^([2-9])(?:i|iron|jern)$/)||token.match(/^(?:iron|jern)([2-9])$/);if(m)return `iron-${m[1]}`;
+  m=token.match(/^([2-9])(?:w|wood)$/)||token.match(/^wood([2-9])$/);if(m)return `wood-${m[1]}`;
+  m=token.match(/^([2-6])(?:h|hybrid)$/)||token.match(/^hybrid([2-6])$/);if(m)return `hybrid-${m[1]}`;
+  return `other-${token}`;
+}
+function migrateClubs(clubs){
+  const grouped=new Map();
+  for(const club of Array.isArray(clubs)?clubs:[]){
+    const clubId=clubIdFromName(club.clubId||club.name);
+    const n=clubId.split("-")[1];
+    const name=clubId.startsWith("iron-")?`${n} Jern`:clubId.startsWith("wood-")?`${n} Wood`:clubId.startsWith("hybrid-")?`${n} Hybrid`:clubId==="wedge-pw"?"PW":clubId==="wedge-gw"?"GW":clubId==="wedge-aw"?"AW":clubId==="wedge-sw"?"SW":clubId==="wedge-lw"?"LW":clubId==="driver"?"Driver":clubId==="putter"?"Putter":String(club.name||clubId);
+    const old=grouped.get(clubId);grouped.set(clubId,{...(old||{}),...club,clubId,name,rawNames:[...new Set([...(old?.rawNames||[]),...(club.rawNames||[]),club.name].filter(Boolean))]});
+  }
+  return [...grouped.values()];
 }
 function normalizeBag(bag) {
   if (!Array.isArray(bag)) return [];
@@ -30,7 +42,7 @@ function normalizeBag(bag) {
     .map((item, index) => ({
       id: String(item.id || `bag-club-${index + 1}`),
       club: String(item.club || item.name || "").trim(),
-      clubId: String(item.clubId || clubIdFromName(item.club || item.name)).trim(),
+      clubId: clubIdFromName(item.clubId || item.club || item.name),
       brand: String(item.brand || "").trim(),
       model: String(item.model || "").trim(),
       loft: Number.isFinite(Number(item.loft)) ? Number(item.loft) : null,
@@ -42,7 +54,7 @@ function normalizeBag(bag) {
 export function defaults() {
   return {
     page: "home",
-    clubs: structuredClone(DEMO_CLUBS),
+    clubs: migrateClubs(structuredClone(DEMO_CLUBS)),
     rounds: [],
     clubIndex: 0,
     editRoundId: null,
@@ -70,8 +82,8 @@ export function loadState() {
       },
       rounds: Array.isArray(storedState?.rounds) ? storedState.rounds : [],
       clubs: Array.isArray(storedState?.clubs)
-        ? storedState.clubs
-        : structuredClone(DEMO_CLUBS)
+        ? migrateClubs(storedState.clubs)
+        : migrateClubs(structuredClone(DEMO_CLUBS))
     };
   } catch (error) {
     console.error("Kunne ikke læse localStorage:", error);
@@ -88,7 +100,8 @@ export function saveState(state) {
         ...DEFAULT_PROFILE,
         ...(state.profile || {}),
         bag: normalizeBag(state.profile?.bag)
-      }
+      },
+      clubs: migrateClubs(state.clubs)
     };
     localStorage.setItem(KEY, JSON.stringify(stateToSave));
   } catch (error) {

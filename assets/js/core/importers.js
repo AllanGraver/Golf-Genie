@@ -19,13 +19,21 @@ export const CLUB_CATALOG = [
 
 export function canonicalClub(value) {
   const raw = String(value || "").trim();
-  const direct = CLUB_CATALOG.find(([id]) => id === raw.toLowerCase());
+  let cleaned = raw;
+  // Migrate values repeatedly prefixed by older versions, e.g. other-otherother5jern.
+  for (let index = 0; index < 12; index += 1) {
+    const next = cleaned.replace(/^other(?:-|_)?/i, "");
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  const directId = cleaned.toLowerCase();
+  const direct = CLUB_CATALOG.find(([id]) => id === directId);
   if (direct) return { clubId: direct[0], name: direct[1], rawName: raw };
-  const token = key(raw);
+  const token = key(cleaned);
   if (!token) return { clubId: "", name: "", rawName: raw };
   if (/^(driver|drv|1w|1wood|wood1)$/.test(token)) return { clubId:"driver", name:"Driver", rawName:raw };
   if (/^(putter|pt)$/.test(token)) return { clubId:"putter", name:"Putter", rawName:raw };
-  const wedges={pw:"wedge-pw",pitching:"wedge-pw",pitchingwedge:"wedge-pw",pwedge:"wedge-pw",gw:"wedge-gw",gap:"wedge-gw",gapwedge:"wedge-gw",gwedge:"wedge-gw",aw:"wedge-aw",approach:"wedge-aw",approachwedge:"wedge-aw",awedge:"wedge-aw",sw:"wedge-sw",sand:"wedge-sw",sandwedge:"wedge-sw",swedge:"wedge-sw",lw:"wedge-lw",lob:"wedge-lw",lobwedge:"wedge-lw",lwedge:"wedge-lw"};
+  const wedges={pw:"wedge-pw",pitching:"wedge-pw",pitchingwedge:"wedge-pw",pwedge:"wedge-pw",gw:"wedge-gw",gap:"wedge-gw",gapwedge:"wedge-gw",gwedge:"wedge-gw",aw:"wedge-aw",approach:"wedge-aw",approachwedge:"wedge-aw",awedge:"wedge-aw",sw:"wedge-sw",sand:"wedge-sw",sandwedge:"wedge-sw",swedge:"wedge-sw",lw:"wedge-lw",lob:"wedge-lw",lobwedge:"wedge-lw",lwedge:"wedge-lw",wedgepw:"wedge-pw",wedgegw:"wedge-gw",wedgeaw:"wedge-aw",wedgesw:"wedge-sw",wedgelw:"wedge-lw"};
   if (wedges[token]) { const id=wedges[token]; return { clubId:id, name:CLUB_CATALOG.find(([x])=>x===id)[1], rawName:raw }; }
   const patterns=[
     [/^(?:wood|fairway|koelle)([2-9])$/, "wood"], [/^([2-9])(?:w|wood|fairway|koelle)$/, "wood"],
