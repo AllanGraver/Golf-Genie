@@ -1,647 +1,83 @@
-const number = (value) => {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const parsed = Number(
-    String(value)
-      .replace(/\s/g, "")
-      .replace(",", ".")
-  );
-
+const number = value => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed=Number(String(value).replace(/\s/g,"").replace(",","."));
   return Number.isFinite(parsed) ? parsed : null;
 };
+const text=(value,fallback="")=>String(value??"").trim()||fallback;
+const key=value=>String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+const field=(row,names)=>Object.entries(row||{}).find(([name])=>names.includes(key(name)))?.[1];
+const median=values=>{const d=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!d.length)return null;const m=Math.floor(d.length/2);return d.length%2?d[m]:(d[m-1]+d[m])/2;};
 
-const text = (value, fallback = "") => {
-  const normalized = String(value ?? "").trim();
-  return normalized || fallback;
-};
+export const CLUB_CATALOG = [
+  ["driver", "Driver"],
+  ...[2,3,4,5,7,9].map(n => [`wood-${n}`, `${n}W`]),
+  ...[2,3,4,5,6].map(n => [`hybrid-${n}`, `${n}H`]),
+  ...[2,3,4,5,6,7,8,9].map(n => [`iron-${n}`, `${n}i`]),
+  ["wedge-pw", "PW"], ["wedge-gw", "GW"], ["wedge-aw", "AW"],
+  ["wedge-sw", "SW"], ["wedge-lw", "LW"], ["putter", "Putter"]
+];
 
-const key = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+export function canonicalClub(value) {
+  const raw = String(value || "").trim();
+  const token = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replaceAll("æ", "ae").replaceAll("ø", "oe").replaceAll("å", "aa")
     .replace(/[^a-z0-9]/g, "");
-
-const field = (row, names) => {
-  const match = Object.entries(row || {}).find(
-    ([name]) => names.includes(key(name))
-  );
-
-  return match?.[1];
-};
-
-const median = (values) => {
-  const data = values
-    .filter(Number.isFinite)
-    .sort((a, b) => a - b);
-
-  if (!data.length) {
-    return null;
-  }
-
-  const middle = Math.floor(data.length / 2);
-
-  return data.length % 2
-    ? data[middle]
-    : (data[middle - 1] + data[middle]) / 2;
-};
-
-function parseArray(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map(number)
-      .filter(Number.isFinite);
-  }
-
-  if (value === null || value === undefined || value === "") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-
-    if (Array.isArray(parsed)) {
-      return parsed
-        .map(number)
-        .filter(Number.isFinite);
-    }
-  } catch {
-    // Continue with separated text values.
-  }
-
-  return String(value)
-    .split(/[;,|\s]+/)
-    .map(number)
-    .filter(Number.isFinite);
-}
-
-function normalizeDate(value) {
-  const raw = text(value);
-
-  if (!raw) {
-    return "";
-  }
-
-  const isoMatch = raw.match(/^\d{4}-\d{2}-\d{2}/);
-
-  if (isoMatch) {
-    return isoMatch[0];
-  }
-
-  const numericMatch = raw.match(
-    /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/
-  );
-
-  if (numericMatch) {
-    const day = numericMatch[1].padStart(2, "0");
-    const month = numericMatch[2].padStart(2, "0");
-
-    return `${numericMatch[3]}-${month}-${day}`;
-  }
-
-  return raw;
-}
-
-function slug(value) {
-  return text(value, "unknown")
-    .toLowerCase()
-    .replaceAll("æ", "ae")
-    .replaceAll("ø", "oe")
-    .replaceAll("å", "aa")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function calculatePercentage(made, possible) {
-  if (
-    !Number.isFinite(made) ||
-    !Number.isFinite(possible) ||
-    possible <= 0
-  ) {
-    return null;
-  }
-
-  return Number(((made / possible) * 100).toFixed(1));
-}
-
-function calculateScoringCategories(holes, holePars) {
-  const result = {
-    eaglesOrBetter: 0,
-    birdies: 0,
-    pars: 0,
-    bogeys: 0,
-    doubleBogeyPlus: 0,
-    completedHoles: 0
+  if (!token) return { clubId: "", name: "", rawName: raw };
+  if (/^(driver|drv|1w|1wood|wood1)$/.test(token)) return { clubId:"driver", name:"Driver", rawName:raw };
+  if (/^(putter|pt)$/.test(token)) return { clubId:"putter", name:"Putter", rawName:raw };
+  const wedges = {
+    pw:"wedge-pw", pitching:"wedge-pw", pitchingwedge:"wedge-pw", pwedge:"wedge-pw",
+    gw:"wedge-gw", gap:"wedge-gw", gapwedge:"wedge-gw", gwedge:"wedge-gw",
+    aw:"wedge-aw", approach:"wedge-aw", approachwedge:"wedge-aw", awedge:"wedge-aw",
+    sw:"wedge-sw", sand:"wedge-sw", sandwedge:"wedge-sw", swedge:"wedge-sw",
+    lw:"wedge-lw", lob:"wedge-lw", lobwedge:"wedge-lw", lwedge:"wedge-lw"
   };
-
-  for (let index = 0; index < 18; index += 1) {
-    const score = Number(holes[index]);
-    const par = Number(holePars[index]);
-
-    if (!Number.isFinite(score) || !Number.isFinite(par)) {
-      continue;
-    }
-
-    result.completedHoles += 1;
-    const difference = score - par;
-
-    if (difference <= -2) {
-      result.eaglesOrBetter += 1;
-    } else if (difference === -1) {
-      result.birdies += 1;
-    } else if (difference === 0) {
-      result.pars += 1;
-    } else if (difference === 1) {
-      result.bogeys += 1;
-    } else {
-      result.doubleBogeyPlus += 1;
+  if (wedges[token]) {
+    const id=wedges[token]; return { clubId:id, name:CLUB_CATALOG.find(([x])=>x===id)[1], rawName:raw };
+  }
+  const patterns = [
+    [/^(?:wood|fairway)([2-9])$/, "wood"], [/^([2-9])(?:w|wood)$/, "wood"],
+    [/^(?:hybrid|rescue)([2-6])$/, "hybrid"], [/^([2-6])(?:h|hybrid|rescue)$/, "hybrid"],
+    [/^iron([2-9])$/, "iron"], [/^([2-9])(?:i|iron)$/, "iron"]
+  ];
+  for (const [rx,type] of patterns) {
+    const m=token.match(rx); if (m) {
+      const id=`${type}-${m[1]}`;
+      const hit=CLUB_CATALOG.find(([x])=>x===id);
+      if (hit) return { clubId:id, name:hit[1], rawName:raw };
     }
   }
-
-  return result;
-}
-
-function sumComplete(values, expectedLength) {
-  if (!Array.isArray(values) || values.length !== expectedLength) {
-    return null;
-  }
-
-  const valid = values.map(Number);
-
-  if (!valid.every(Number.isFinite)) {
-    return null;
-  }
-
-  return valid.reduce((sum, value) => sum + value, 0);
-}
-
-function createRoundId(round, index) {
-  const existingId = text(
-    field(round, [
-      "id",
-      "scorecardid",
-      "scorecardpk",
-      "roundid"
-    ])
-  );
-
-  if (existingId) {
-    return existingId;
-  }
-
-  const course = text(
-    field(round, ["course", "coursename", "banename"]),
-    "unknown-course"
-  );
-
-  const date = normalizeDate(
-    field(round, [
-      "date",
-      "rounddate",
-      "starttime",
-      "formattedstarttime"
-    ])
-  );
-
-  const score = number(
-    field(round, ["score", "totalscore", "strokes"])
-  );
-
-  return [
-    slug(course),
-    slug(date || "unknown-date"),
-    score ?? index
-  ].join("-");
+  return { clubId:`other-${token}`, name:raw, rawName:raw };
 }
 
 export function parseCsv(csvText) {
-  const lines = String(csvText || "")
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim());
-
-  if (lines.length < 2) {
-    throw new Error(
-      "CSV-filen er tom eller mangler datarækker."
-    );
-  }
-
-  const semicolonCount = (lines[0].match(/;/g) || []).length;
-  const commaCount = (lines[0].match(/,/g) || []).length;
-  const separator = semicolonCount > commaCount ? ";" : ",";
-
-  const splitLine = (line) => {
-    const output = [];
-    let currentValue = "";
-    let quoted = false;
-
-    for (let index = 0; index < line.length; index += 1) {
-      const character = line[index];
-
-      if (character === '"' && line[index + 1] === '"') {
-        currentValue += '"';
-        index += 1;
-      } else if (character === '"') {
-        quoted = !quoted;
-      } else if (character === separator && !quoted) {
-        output.push(currentValue.trim());
-        currentValue = "";
-      } else {
-        currentValue += character;
-      }
-    }
-
-    output.push(currentValue.trim());
-    return output;
-  };
-
-  const headers = splitLine(lines[0]);
-
-  return lines.slice(1).map((line) => {
-    const values = splitLine(line);
-
-    return Object.fromEntries(
-      headers.map((header, index) => [
-        header,
-        values[index] ?? ""
-      ])
-    );
-  });
+  const lines=String(csvText||"").replace(/^\uFEFF/,"").split(/\r?\n/).filter(line=>line.trim());
+  if(lines.length<2) throw new Error("CSV-filen er tom eller mangler datarækker.");
+  const separator=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?";":",";
+  const split=line=>{const out=[];let value="",quoted=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'&&line[i+1]==='"'){value+='"';i++;}else if(c==='"')quoted=!quoted;else if(c===separator&&!quoted){out.push(value.trim());value="";}else value+=c;}out.push(value.trim());return out;};
+  const headers=split(lines[0]);
+  return lines.slice(1).map(line=>Object.fromEntries(headers.map((h,i)=>[h,split(line)[i]??""])));
 }
 
-export function importTrackman(rows, existing = []) {
-  const groups = {};
-
-  rows.forEach((row) => {
-    const name = text(
-      field(row, ["club", "clubname", "clubtype", "kolle"])
-    );
-
-    const carry = number(
-      field(row, [
-        "carry",
-        "carrydistance",
-        "carrymeters",
-        "carrymetres"
-      ])
-    );
-
-    if (!name || carry === null) {
-      return;
-    }
-
-    if (!groups[name]) {
-      groups[name] = [];
-    }
-
-    groups[name].push({
-      carry,
-      total: number(
-        field(row, [
-          "total",
-          "totaldistance",
-          "totalmeters",
-          "totalmetres"
-        ])
-      ),
-      side: number(
-        field(row, [
-          "side",
-          "sideoffline",
-          "offline",
-          "lateral"
-        ])
-      )
-    });
-  });
-
-  const clubs = Object.entries(groups)
-    .map(([name, shots]) => {
-      const carry = Math.round(
-        median(shots.map((shot) => shot.carry))
-      );
-
-      const oldClub = existing.find(
-        (club) => key(club.name) === key(name)
-      );
-
-      const totalMedian = median(
-        shots.map((shot) => shot.total)
-      );
-
-      const dispersionMedian = median(
-        shots.map((shot) =>
-          Number.isFinite(shot.side)
-            ? Math.abs(shot.side)
-            : null
-        )
-      );
-
-      return {
-        name,
-        carry,
-        total: Math.round(totalMedian ?? carry),
-        dispersion: Math.round(dispersionMedian ?? 0),
-        shots: shots.length,
-        benchmark:
-          oldClub?.benchmark ??
-          Math.round(carry * 0.96)
-      };
-    })
-    .sort((a, b) => b.carry - a.carry);
-
-  if (!clubs.length) {
-    throw new Error(
-      "Kunne ikke finde gyldige Club- og Carry-kolonner i TrackMan-filen."
-    );
+export function importTrackman(rows, existing=[]) {
+  const groups=new Map();
+  for(const row of rows){
+    const rawName=text(field(row,["club","clubname","clubtype","kolle","kølle"]));
+    const carry=number(field(row,["carry","carrydistance","carrymeters","carrymetres"]));
+    if(!rawName||carry===null) continue;
+    const normalized=canonicalClub(rawName);
+    const group=groups.get(normalized.clubId)||{...normalized,rawNames:new Set(),shots:[]};
+    group.rawNames.add(rawName);
+    group.shots.push({carry,total:number(field(row,["total","totaldistance","totalmeters","totalmetres"])),side:number(field(row,["side","sideoffline","offline","lateral"]))});
+    groups.set(normalized.clubId,group);
   }
-
+  const clubs=[...groups.values()].map(group=>{
+    const carry=Math.round(median(group.shots.map(s=>s.carry)));
+    const previous=existing.find(c=>(c.clubId||canonicalClub(c.name).clubId)===group.clubId);
+    const total=median(group.shots.map(s=>s.total));
+    const dispersion=median(group.shots.map(s=>Number.isFinite(s.side)?Math.abs(s.side):null));
+    return {clubId:group.clubId,name:group.name,rawNames:[...group.rawNames],carry,total:Math.round(total??carry),dispersion:Math.round(dispersion??0),shots:group.shots.length,benchmark:previous?.benchmark??Math.round(carry*.96)};
+  }).sort((a,b)=>b.carry-a.carry);
+  if(!clubs.length) throw new Error("Kunne ikke finde gyldige Club- og Carry-kolonner i TrackMan-filen.");
   return clubs;
-}
-
-export function importGarmin(data) {
-  const source = Array.isArray(data)
-    ? data
-    : data?.rounds ||
-      data?.scorecards ||
-      data?.scorecardSummaries ||
-      [];
-
-  if (!Array.isArray(source)) {
-    throw new Error(
-      "Garmin-filen indeholder ikke en gyldig liste med runder."
-    );
-  }
-
-  const rounds = source
-    .map((row, index) => {
-      const course = text(
-        field(row, ["course", "coursename", "banename"]),
-        "Ukendt bane"
-      );
-
-      const date = normalizeDate(
-        field(row, [
-          "date",
-          "rounddate",
-          "starttime",
-          "formattedstarttime"
-        ])
-      );
-
-      const holes = parseArray(
-        field(row, [
-          "holes",
-          "holescores",
-          "scorebyhole",
-          "holeslag",
-          "strokesbyhole"
-        ])
-      );
-
-      const holePars = parseArray(
-        field(row, [
-          "holepars",
-          "parsbyhole",
-          "parbyhole",
-          "hulpar"
-        ])
-      );
-
-      const holeHandicapStrokes = parseArray(
-        field(row, [
-          "holehandicapstrokes",
-          "handicapstrokesbyhole",
-          "hcpstrokesbyhole",
-          "extrastrikesbyhole",
-          "handicapslag"
-        ])
-      );
-
-      const importedScore = number(
-        field(row, ["score", "totalscore", "strokes"])
-      );
-
-      const calculatedScore = sumComplete(holes, 18);
-      const calculatedPar = sumComplete(holePars, 18);
-
-      const score = calculatedScore ?? importedScore;
-
-      const importedRelativeToPar = number(
-        field(row, [
-          "relativetopar",
-          "topar",
-          "overpar",
-          "scoretopar"
-        ])
-      );
-
-      const relativeToPar =
-        Number.isFinite(calculatedScore) &&
-        Number.isFinite(calculatedPar)
-          ? calculatedScore - calculatedPar
-          : importedRelativeToPar;
-
-      const firMade = number(
-        field(row, [
-          "firmade",
-          "fairwayshit",
-          "fairwaysmade"
-        ])
-      );
-
-      const firPossible = number(
-        field(row, [
-          "firpossible",
-          "fairwayspossible",
-          "fairwayattempts"
-        ])
-      );
-
-      const girMade = number(
-        field(row, [
-          "girmade",
-          "greensinregulation",
-          "greenshit"
-        ])
-      );
-
-      const girPossible = number(
-        field(row, [
-          "girpossible",
-          "greenspossible",
-          "greensinregulationpossible"
-        ])
-      );
-
-      const scoring = calculateScoringCategories(
-        holes,
-        holePars
-      );
-
-      const importedFrontNine = number(
-        field(row, [
-          "frontnine",
-          "front9",
-          "out",
-          "firstnine"
-        ])
-      );
-
-      const importedBackNine = number(
-        field(row, [
-          "backnine",
-          "back9",
-          "in",
-          "secondnine"
-        ])
-      );
-
-      const frontNine =
-        holes.length === 18
-          ? holes
-              .slice(0, 9)
-              .reduce((sum, value) => sum + value, 0)
-          : importedFrontNine;
-
-      const backNine =
-        holes.length === 18
-          ? holes
-              .slice(9, 18)
-              .reduce((sum, value) => sum + value, 0)
-          : importedBackNine;
-
-      return {
-        id: createRoundId(row, index),
-        course,
-        tees: text(
-          field(row, [
-            "tees",
-            "tee",
-            "teename",
-            "teebox",
-            "teested"
-          ])
-        ),
-        date,
-        score,
-        relativeToPar,
-        points: number(
-          field(row, [
-            "points",
-            "stableford",
-            "stablefordscore"
-          ])
-        ),
-        firMade,
-        firPossible,
-        fir:
-          calculatePercentage(firMade, firPossible) ??
-          number(
-            field(row, [
-              "fir",
-              "fairwaypercentage",
-              "fairwayspercentage"
-            ])
-          ),
-        girMade,
-        girPossible,
-        gir:
-          calculatePercentage(girMade, girPossible) ??
-          number(
-            field(row, [
-              "gir",
-              "girpercentage",
-              "greensinregulationpercentage"
-            ])
-          ),
-        putts: number(
-          field(row, ["putts", "totalputts"])
-        ),
-        upAndDown: number(
-          field(row, [
-            "upanddown",
-            "upanddownpercentage",
-            "opogned"
-          ])
-        ),
-        upAndDownMade: number(
-          field(row, [
-            "upanddownmade",
-            "upanddownsuccessful"
-          ])
-        ),
-        upAndDownPossible: number(
-          field(row, [
-            "upanddownpossible",
-            "upanddownattempts"
-          ])
-        ),
-        eaglesOrBetter:
-          scoring.completedHoles
-            ? scoring.eaglesOrBetter
-            : number(
-                field(row, [
-                  "eaglesorbetter",
-                  "eagles"
-                ])
-              ),
-        birdies:
-          scoring.completedHoles
-            ? scoring.birdies
-            : number(
-                field(row, ["birdies", "birdiecount"])
-              ),
-        pars:
-          scoring.completedHoles
-            ? scoring.pars
-            : number(
-                field(row, ["pars", "parcount"])
-              ),
-        bogeys:
-          scoring.completedHoles
-            ? scoring.bogeys
-            : number(
-                field(row, ["bogeys", "bogeycount"])
-              ),
-        doubleBogeyPlus:
-          scoring.completedHoles
-            ? scoring.doubleBogeyPlus
-            : number(
-                field(row, [
-                  "doublebogeyplus",
-                  "doublebogeys",
-                  "doublebogeyorworse"
-                ])
-              ),
-        completedHoles: scoring.completedHoles,
-        frontNine,
-        backNine,
-        holes,
-        holePars,
-        holeHandicapStrokes,
-        source: text(
-          field(row, ["source"]),
-          "Garmin-fil"
-        ),
-        importedAt: text(
-          field(row, ["importedat"]),
-          new Date().toISOString()
-        )
-      };
-    })
-    .filter((round) => round.score !== null);
-
-  if (!rounds.length) {
-    throw new Error(
-      "Ingen gyldige scorekort blev fundet i Garmin-filen."
-    );
-  }
-
-  return rounds;
 }
