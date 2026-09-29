@@ -10,9 +10,9 @@ const DEFAULT_PROFILE = {
 };
 
 const CLUB_OPTIONS = [
-  "Driver", "2 Wood", "3 Wood", "4 Wood", "5 Wood", "7 Wood", "9 Wood",
-  "2 Hybrid", "3 Hybrid", "4 Hybrid", "5 Hybrid", "6 Hybrid",
-  "2 Jern", "3 Jern", "4 Jern", "5 Jern", "6 Jern", "7 Jern", "8 Jern", "9 Jern",
+  "Driver", "2W", "3W", "4W", "5W", "7W", "9W",
+  "2H", "3H", "4H", "5H", "6H",
+  "2i", "3i", "4i", "5i", "6i", "7i", "8i", "9i",
   "PW", "GW", "AW", "SW", "LW", "Putter"
 ];
 
@@ -25,7 +25,7 @@ function escapeAttribute(value) {
 }
 
 function clubRow(item = {}, index = 0) {
-  const selectedClub = String(item.club || "").replace(/^([2-9])i$/, "$1 Jern").replace(/^([2-9])W$/, "$1 Wood").replace(/^([2-6])H$/, "$1 Hybrid");
+  const selectedClub = String(item.club || "");
   const options = CLUB_OPTIONS.map((club) => `
     <option value="${escapeAttribute(club)}" ${club === selectedClub ? "selected" : ""}>
       ${escapeAttribute(club)}
@@ -82,7 +82,6 @@ function readBag(root) {
       return {
         id: `bag-club-${Date.now()}-${index}`,
         club: field("club")?.value.trim() || "",
-        clubId: field("club")?.value.trim() ? ({"Driver":"driver","PW":"wedge-pw","GW":"wedge-gw","AW":"wedge-aw","SW":"wedge-sw","LW":"wedge-lw","Putter":"putter"}[field("club").value] || field("club").value.toLowerCase().replace(" jern","-iron-temp").replace(/^([2-9])-iron-temp$/, "iron-$1").replace(" wood","-wood-temp").replace(/^([2-9])-wood-temp$/, "wood-$1").replace(" hybrid","-hybrid-temp").replace(/^([2-6])-hybrid-temp$/, "hybrid-$1")) : "",
         brand: field("brand")?.value.trim() || "",
         model: field("model")?.value.trim() || "",
         loft: Number.isFinite(loft) ? loft : null,
