@@ -1,18 +1,188 @@
 import { saveState } from "../core/storage.js";
-import { CLUB_CATALOG, canonicalClub } from "../core/importers.js";
-const DEFAULT_PROFILE={handicap:12.7,targetHandicap:10,homeCourse:"",handedness:"Right",age:42,bag:[]};
-const esc=value=>String(value??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-function row(item={},index=0){
-  const selected=item.clubId||canonicalClub(item.club).clubId;
-  return `<div class="mini-club" data-profile-bag-row>
-    <div class="mini-club__top"><span class="mini-club__number">${index+1}</span><select data-bag-field="clubId" aria-label="Kølletype"><option value="">Kølle</option>${CLUB_CATALOG.map(([id,name])=>`<option value="${id}" ${id===selected?"selected":""}>${name}</option>`).join("")}</select><button class="mini-club__remove remove-profile-club" type="button" aria-label="Fjern kølle">×</button></div>
-    <div class="mini-club__details"><input data-bag-field="brand" type="text" placeholder="Mærke" value="${esc(item.brand)}"><input data-bag-field="model" type="text" placeholder="Model" value="${esc(item.model)}"><input data-bag-field="loft" type="number" min="5" max="70" step="0.5" placeholder="Loft °" value="${esc(item.loft??"")}"><input data-bag-field="year" type="text" inputmode="numeric" maxlength="4" placeholder="År" value="${esc(item.year)}"></div>
-  </div>`;
+
+const DEFAULT_PROFILE = {
+  handicap: 12.7,
+  targetHandicap: 10.0,
+  homeCourse: "",
+  handedness: "Right",
+  age: 42,
+  bag: []
+};
+
+const CLUB_OPTIONS = [
+  "Driver", "2 Wood", "3 Wood", "4 Wood", "5 Wood", "7 Wood", "9 Wood",
+  "2 Hybrid", "3 Hybrid", "4 Hybrid", "5 Hybrid", "6 Hybrid",
+  "2 Jern", "3 Jern", "4 Jern", "5 Jern", "6 Jern", "7 Jern", "8 Jern", "9 Jern",
+  "PW", "GW", "AW", "SW", "LW", "Putter"
+];
+
+function escapeAttribute(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
-function readBag(root){const seen=new Set();return [...root.querySelectorAll("[data-profile-bag-row]")].map((el,index)=>{const get=n=>el.querySelector(`[data-bag-field="${n}"]`);const clubId=get("clubId")?.value||"";const canonical=canonicalClub(clubId);const loft=Number(String(get("loft")?.value||"").replace(",","."));return{id:`bag-${Date.now()}-${index}`,clubId,club:canonical.name,brand:get("brand")?.value.trim()||"",model:get("model")?.value.trim()||"",loft:Number.isFinite(loft)?loft:null,year:get("year")?.value.trim()||""};}).filter(x=>x.clubId&&!seen.has(x.clubId)&&seen.add(x.clubId));}
-export function bindProfileBagEditor(state,root=document){const editor=root.querySelector("[data-profile-bag-editor]");if(!editor||editor.dataset.bound)return;editor.dataset.bound="1";editor.addEventListener("click",event=>{const remove=event.target.closest(".remove-profile-club");if(remove){remove.closest("[data-profile-bag-row]")?.remove();return;}if(event.target.closest("#add-profile-club")){const list=editor.querySelector("[data-profile-bag-list]");list?.insertAdjacentHTML("beforeend",row({},list.children.length));return;}if(event.target.closest("#save-profile-bag")){state.profile??={};state.profile.bag=readBag(editor);saveState(state);const status=editor.querySelector("[data-profile-bag-status]");if(status){status.hidden=false;status.textContent=`${state.profile.bag.length} køller gemt. Bag IQ matcher nu via faste kølle-ID'er.`;}}});}
-export function profilePage(state){const profile={...DEFAULT_PROFILE,...(state.profile||{})};const bag=Array.isArray(profile.bag)?profile.bag:[];queueMicrotask(()=>bindProfileBagEditor(state));return `<style>
-.profile-bag-card{padding:16px}.profile-bag-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}.profile-bag-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.mini-club{padding:10px;border:1px solid var(--color-border);border-radius:14px;background:#f8fafc}.mini-club__top{display:grid;grid-template-columns:24px 1fr 30px;gap:6px;align-items:center}.mini-club__number{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#ecfdf5;color:var(--color-primary-700);font-weight:800;font-size:11px}.mini-club select,.mini-club input{margin:0;padding:8px;font-size:12px}.mini-club__remove{border:0;background:transparent;color:#b91c1c;font-size:22px}.mini-club__details{display:grid;grid-template-columns:1fr 1fr 72px 64px;gap:6px;margin-top:7px}.profile-bag-actions{display:flex;gap:8px}.profile-bag-actions .button{flex:1}@media(max-width:700px){.profile-bag-list{grid-template-columns:1fr}.mini-club__details{grid-template-columns:1fr 1fr}.profile-bag-toolbar{align-items:flex-start}.profile-bag-actions{position:sticky;bottom:72px;padding:8px 0;background:var(--color-page)}}
-</style><div class="page profile-page">
-<div class="card"><p class="eyebrow">PROFIL</p><h2 class="card-title">Spillerprofil</h2><label for="hcp">Handicap</label><input id="hcp" type="number" step="0.1" min="-10" max="54" value="${profile.handicap}"><label for="target">Målhandicap</label><input id="target" type="number" step="0.1" min="-10" max="54" value="${profile.targetHandicap}"><label for="course">Hjemmebane</label><input id="course" type="text" value="${esc(profile.homeCourse)}"><label for="handedness">Spillehånd</label><select id="handedness"><option value="Right" ${profile.handedness==="Right"?"selected":""}>Højrehåndet</option><option value="Left" ${profile.handedness==="Left"?"selected":""}>Venstrehåndet</option></select><label for="age">Alder</label><input id="age" type="number" min="1" max="120" value="${profile.age}"><button id="save-profile" class="button button--accent button--full" type="button">Gem profil</button></div>
-<div class="card profile-bag-card" data-profile-bag-editor><div class="profile-bag-toolbar"><div><p class="eyebrow">MIN BAG</p><h2 class="card-title">Udstyr</h2><p class="text-muted">Kompakt registrering med sikker TrackMan-matching.</p></div><span class="badge">${bag.length} køller</span></div><div class="profile-bag-list" data-profile-bag-list>${bag.map(row).join("")}</div>${!bag.length?'<div class="status status--info">Tilføj køllerne i din bag. Hver kølletype kan kun gemmes én gang.</div>':""}<div class="profile-bag-actions"><button id="add-profile-club" class="button button--outline" type="button">+ Tilføj</button><button id="save-profile-bag" class="button button--accent" type="button">Gem Min Bag</button></div><div class="status status--success" data-profile-bag-status hidden></div></div></div>`;}
+
+function clubRow(item = {}, index = 0) {
+  const selectedClub = String(item.club || "").replace(/^([2-9])i$/, "$1 Jern").replace(/^([2-9])W$/, "$1 Wood").replace(/^([2-6])H$/, "$1 Hybrid");
+  const options = CLUB_OPTIONS.map((club) => `
+    <option value="${escapeAttribute(club)}" ${club === selectedClub ? "selected" : ""}>
+      ${escapeAttribute(club)}
+    </option>
+  `).join("");
+  return `
+    <div class="profile-bag-row" data-profile-bag-row>
+      <div class="profile-bag-row__header">
+        <strong>Kølle ${index + 1}</strong>
+        <button class="button button--danger remove-profile-club" type="button">Fjern</button>
+      </div>
+      <div class="profile-bag-grid">
+        <div>
+          <label>Kølle</label>
+          <select data-bag-field="club">
+            <option value="">Vælg kølle</option>
+            ${options}
+          </select>
+        </div>
+        <div>
+          <label>Mærke</label>
+          <input data-bag-field="brand" type="text" placeholder="F.eks. TaylorMade" value="${escapeAttribute(item.brand)}">
+        </div>
+        <div>
+          <label>Model</label>
+          <input data-bag-field="model" type="text" placeholder="F.eks. P770" value="${escapeAttribute(item.model)}">
+        </div>
+        <div>
+          <label>Loft</label>
+          <input data-bag-field="loft" type="number" inputmode="decimal" min="5" max="70" step="0.5" placeholder="°" value="${escapeAttribute(item.loft ?? "")}">
+        </div>
+        <div>
+          <label>Årgang</label>
+          <input data-bag-field="year" type="text" inputmode="numeric" maxlength="4" placeholder="F.eks. 2024" value="${escapeAttribute(item.year)}">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renumberRows(root) {
+  root.querySelectorAll("[data-profile-bag-row]").forEach((row, index) => {
+    const title = row.querySelector(".profile-bag-row__header strong");
+    if (title) title.textContent = `Kølle ${index + 1}`;
+  });
+}
+
+function readBag(root) {
+  return Array.from(root.querySelectorAll("[data-profile-bag-row]"))
+    .map((row, index) => {
+      const field = (name) => row.querySelector(`[data-bag-field="${name}"]`);
+      const loftValue = String(field("loft")?.value || "").trim().replace(",", ".");
+      const loft = loftValue === "" ? null : Number(loftValue);
+      return {
+        id: `bag-club-${Date.now()}-${index}`,
+        club: field("club")?.value.trim() || "",
+        clubId: field("club")?.value.trim() ? ({"Driver":"driver","PW":"wedge-pw","GW":"wedge-gw","AW":"wedge-aw","SW":"wedge-sw","LW":"wedge-lw","Putter":"putter"}[field("club").value] || field("club").value.toLowerCase().replace(" jern","-iron-temp").replace(/^([2-9])-iron-temp$/, "iron-$1").replace(" wood","-wood-temp").replace(/^([2-9])-wood-temp$/, "wood-$1").replace(" hybrid","-hybrid-temp").replace(/^([2-6])-hybrid-temp$/, "hybrid-$1")) : "",
+        brand: field("brand")?.value.trim() || "",
+        model: field("model")?.value.trim() || "",
+        loft: Number.isFinite(loft) ? loft : null,
+        year: field("year")?.value.trim() || ""
+      };
+    })
+    .filter((item) => item.club);
+}
+
+export function bindProfileBagEditor(state, root = document) {
+  const editor = root.querySelector("[data-profile-bag-editor]");
+  if (!editor || editor.dataset.bound === "true") return;
+  editor.dataset.bound = "true";
+
+  editor.addEventListener("click", (event) => {
+    const removeButton = event.target.closest(".remove-profile-club");
+    if (removeButton) {
+      removeButton.closest("[data-profile-bag-row]")?.remove();
+      renumberRows(editor);
+      return;
+    }
+    if (event.target.closest("#add-profile-club")) {
+      const list = editor.querySelector("[data-profile-bag-list]");
+      if (!list) return;
+      list.insertAdjacentHTML("beforeend", clubRow({}, list.children.length));
+      renumberRows(editor);
+      list.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    if (event.target.closest("#save-profile-bag")) {
+      state.profile ??= {};
+      state.profile.bag = readBag(editor);
+      saveState(state);
+      const status = editor.querySelector("[data-profile-bag-status]");
+      if (status) {
+        status.hidden = false;
+        status.textContent = `${state.profile.bag.length} køller er gemt i Min Bag.`;
+      }
+    }
+  });
+}
+
+export function profilePage(state) {
+  const profile = { ...DEFAULT_PROFILE, ...(state.profile || {}) };
+  const bag = Array.isArray(profile.bag) ? profile.bag : [];
+  queueMicrotask(() => bindProfileBagEditor(state));
+
+  return `
+    <div class="page profile-page">
+      <div class="card">
+        <p class="eyebrow">PROFIL</p>
+        <h2 class="card-title">Spillerprofil</h2>
+        <p class="text-muted">Oplysningerne gemmes lokalt og bruges til at tilpasse Golf Genie.</p>
+
+        <label for="hcp">Handicap</label>
+        <input id="hcp" type="number" inputmode="decimal" step="0.1" min="-10" max="54" value="${profile.handicap}">
+
+        <label for="target">Målhandicap</label>
+        <input id="target" type="number" inputmode="decimal" step="0.1" min="-10" max="54" value="${profile.targetHandicap}">
+
+        <label for="course">Hjemmebane</label>
+        <input id="course" type="text" autocomplete="organization" placeholder="Eksempelvis Aarhus Golf Club" value="${escapeAttribute(profile.homeCourse)}">
+
+        <label for="handedness">Spillehånd</label>
+        <select id="handedness">
+          <option value="Right" ${profile.handedness === "Right" ? "selected" : ""}>Højrehåndet</option>
+          <option value="Left" ${profile.handedness === "Left" ? "selected" : ""}>Venstrehåndet</option>
+        </select>
+
+        <label for="age">Alder</label>
+        <input id="age" type="number" inputmode="numeric" step="1" min="1" max="120" value="${profile.age}">
+
+        <button id="save-profile" class="button button--accent button--full" type="button">Gem profil</button>
+      </div>
+
+      <div class="card" data-profile-bag-editor>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">MIN BAG</p>
+            <h2 class="card-title">Jern og køller</h2>
+          </div>
+          <span class="badge">${bag.length} registreret</span>
+        </div>
+        <p class="text-muted">
+          Registrér kølletype, mærke, model, loft og eventuelt årgang. Bag IQ matcher kølletype mod navnet i TrackMan-data.
+        </p>
+        <div class="profile-bag-list" data-profile-bag-list>
+          ${bag.map(clubRow).join("")}
+        </div>
+        ${bag.length === 0 ? `<div class="status status--info">Du har endnu ikke registreret køller i Min Bag.</div>` : ""}
+        <div class="profile-bag-actions">
+          <button id="add-profile-club" class="button button--outline" type="button">Tilføj kølle</button>
+          <button id="save-profile-bag" class="button button--accent" type="button">Gem Min Bag</button>
+        </div>
+        <div class="status status--success" data-profile-bag-status role="status" hidden></div>
+      </div>
+
+      <div class="status status--info">
+        Profil og Min Bag gemmes kun lokalt på denne enhed. Hvis browserdata slettes, nulstilles oplysningerne.
+      </div>
+    </div>
+  `;
+}
