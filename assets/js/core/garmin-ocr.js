@@ -15,10 +15,22 @@ const DANISH_MONTHS = {
 
 function normalizeText(text) {
   return String(text || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .replace(/\r/g, "\n")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function normalizeGarminOcrWords(text) {
+  return normalizeText(text)
+    .replace(/\b[Pp][o0]rs\b/g, "Pars")
+    .replace(/\b[Bb]og(?:e|c|o)?v?s\b/g, "Bogeys")
+    .replace(/\b[Ff]a[i1l]rways?\b/g, "Fairways")
+    .replace(/\b[Gg][i1l][Rr][s5]?\b/g, "GIRs")
+    .replace(/\b[Pp]u[t7][t5s]?\b/g, "Put")
+    .replace(/\b[Oo]p\s*(?:og|&)\s*n[e3]d\b/g, "Op og ned")
+    .replace(/dobbelt\s*bog[e3]y/gi, "Dobbeltbogey");
 }
 
 function normalizeLine(line) {
@@ -471,9 +483,10 @@ function findGarminStatisticsSummary(text) {
 }
 
 function mergeParsedResults(results) {
-  const mergedText = results
+  const originalText = results
     .map((result) => result.rawText)
     .join("\n");
+  const mergedText = normalizeGarminOcrWords(originalText);
 
   const statisticsSummary = findGarminStatisticsSummary(mergedText);
   const scoreData = findScoreAndRelativeToPar(
@@ -600,7 +613,8 @@ function mergeParsedResults(results) {
     completedHoles:
       scoring.completedHoles,
 
-    rawText: mergedText
+    rawText: originalText,
+    normalizedText: mergedText
   };
 }
 
@@ -610,6 +624,64 @@ export function parseGarminOcrText(text) {
       rawText: normalizeText(text)
     }
   ]);
+}
+
+async function loadImageSource(file) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close?.() };
+    } catch (error) {
+      console.warn("createImageBitmap fallback:", error);
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const image = await new Promise((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error(`Kunne ikke åbne ${file.name}.`));
+    element.src = url;
+  });
+  return { source: image, width: image.naturalWidth, height: image.naturalHeight, close: () => URL.revokeObjectURL(url) };
+}
+function enhanceCanvas(canvas) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < imageData.data.length; index += 4) {
+    const gray = 0.299 * imageData.data[index] + 0.587 * imageData.data[index + 1] + 0.114 * imageData.data[index + 2];
+    const value = Math.max(0, Math.min(255, (gray - 128) * 1.38 + 136));
+    imageData.data[index] = value;
+    imageData.data[index + 1] = value;
+    imageData.data[index + 2] = value;
+    imageData.data[index + 3] = 255;
+  }
+  context.putImageData(imageData, 0, 0);
+  return canvas;
+}
+async function preprocessGarminImage(file, report) {
+  report?.({ status: "optimerer billede", progress: 0.05 });
+  const loaded = await loadImageSource(file);
+  try {
+    const maxSide = 1800;
+    const scale = Math.min(1, maxSide / Math.max(loaded.width, loaded.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(loaded.width * scale));
+    canvas.height = Math.max(1, Math.round(loaded.height * scale));
+    const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(loaded.source, 0, 0, canvas.width, canvas.height);
+    report?.({ status: "forbedrer kontrast", progress: 0.1 });
+    return enhanceCanvas(canvas);
+  } finally {
+    loaded.close();
+  }
+}
+function hasUsefulStatistics(parsed) {
+  return [parsed.firMade, parsed.girMade, parsed.putts, parsed.pars, parsed.bogeys, parsed.doubleBogeyPlus, parsed.upAndDownMade]
+    .filter(value => Number.isFinite(Number(value))).length >= 4;
 }
 
 export async function recognizeGarminImages(
@@ -651,6 +723,12 @@ export async function recognizeGarminImages(
     }
   );
 
+  await worker.setParameters({
+    tessedit_pageseg_mode: "6",
+    preserve_interword_spaces: "1",
+    user_defined_dpi: "180"
+  });
+
   try {
     const results = [];
 
@@ -677,24 +755,42 @@ export async function recognizeGarminImages(
         fileName: file.name
       });
 
-      const recognition = await worker.recognize(
-        file
-      );
+      const optimizedImage = await preprocessGarminImage(file, message => onProgress?.({
+        ...message,
+        fileIndex: currentFileIndex + 1,
+        fileCount: selectedFiles.length,
+        fileName: file.name
+      }));
+
+      let recognition = await worker.recognize(optimizedImage);
+      const firstParsed = parseGarminOcrText(recognition.data.text || "");
+      if (!hasUsefulStatistics(firstParsed)) {
+        await worker.setParameters({ tessedit_pageseg_mode: "11" });
+        const sparse = await worker.recognize(optimizedImage);
+        const sparseParsed = parseGarminOcrText(sparse.data.text || "");
+        if (hasUsefulStatistics(sparseParsed) || (sparse.data.confidence ?? 0) > (recognition.data.confidence ?? 0)) {
+          recognition = sparse;
+        }
+        await worker.setParameters({ tessedit_pageseg_mode: "6" });
+      }
 
       results.push({
         fileName: file.name,
         rawText: recognition.data.text || "",
-        confidence:
-          recognition.data.confidence ?? null
+        confidence: recognition.data.confidence ?? null,
+        optimizedWidth: optimizedImage.width,
+        optimizedHeight: optimizedImage.height
       });
     }
 
     return {
       ...mergeParsedResults(results),
       images: results.map(
-        ({ fileName, confidence }) => ({
+        ({ fileName, confidence, optimizedWidth, optimizedHeight }) => ({
           fileName,
-          confidence
+          confidence,
+          optimizedWidth,
+          optimizedHeight
         })
       )
     };
