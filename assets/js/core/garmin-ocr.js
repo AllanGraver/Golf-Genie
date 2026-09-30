@@ -452,11 +452,30 @@ function sum(values) {
     : null;
 }
 
+
+function findGarminStatisticsSummary(text) {
+  const normalized = normalizeText(text).replace(/\n/g, " ");
+  const first = patterns => {
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) return toNumber(match[1]);
+    }
+    return null;
+  };
+  return {
+    pars: first([/(?:^|\s)(\d{1,2})\s+pars?\b/i, /\bpars?\b[^\d]{0,12}(\d{1,2})\b/i]),
+    bogeys: first([/(?:^|\s)(\d{1,2})\s+bogeys?\b/i, /\bbogeys?\b[^\d]{0,12}(\d{1,2})\b/i]),
+    doubleBogeyPlus: first([/(?:^|\s)(\d{1,2})\s+dobbelt\s*bogey(?:s)?\s+eller\s+værre\b/i, /(?:dobbelt\s*bogey(?:s)?\s+eller\s+værre)[^\d]{0,12}(\d{1,2})\b/i]),
+    upAndDown: findFraction(normalized, ["op og ned", "op & ned", "up and down", "up & down"])
+  };
+}
+
 function mergeParsedResults(results) {
   const mergedText = results
     .map((result) => result.rawText)
     .join("\n");
 
+  const statisticsSummary = findGarminStatisticsSummary(mergedText);
   const scoreData = findScoreAndRelativeToPar(
     mergedText
   );
@@ -536,6 +555,9 @@ function mergeParsedResults(results) {
     ),
 
     putts: findPutts(mergedText),
+    upAndDownMade: statisticsSummary.upAndDown.value,
+    upAndDownPossible: statisticsSummary.upAndDown.total,
+    upAndDown: fractionToPercent(statisticsSummary.upAndDown.value, statisticsSummary.upAndDown.total),
 
     frontNine:
       calculatedFrontNine ??
@@ -563,17 +585,17 @@ function mergeParsedResults(results) {
     pars:
       scoring.completedHoles
         ? scoring.pars
-        : null,
+        : statisticsSummary.pars,
 
     bogeys:
       scoring.completedHoles
         ? scoring.bogeys
-        : null,
+        : statisticsSummary.bogeys,
 
     doubleBogeyPlus:
       scoring.completedHoles
         ? scoring.doubleBogeyPlus
-        : null,
+        : statisticsSummary.doubleBogeyPlus,
 
     completedHoles:
       scoring.completedHoles,
